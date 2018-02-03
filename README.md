@@ -1,7 +1,7 @@
 # DimensionTabler
 
 Builds dimension tables with configurable/variable grainularity. Keeps those tables up-to-date. 
-This makes reporting queries performant and doable. I use it with (grafana)[https://grafana.com/]
+This makes reporting queries performant and doable. I use it with [grafana](https://grafana.com/).
 
 Btw: this is a bad "denglish" name, suggest a better one.
 
@@ -36,8 +36,8 @@ Will follow with the first release.
 
 Support me with bitcoins:
 
-![Imgur](https://i.imgur.com/4RgMA5nm.png)
+![Imgur](https://i.imgur.com/ltpF0A4m.png)
 
-17Xz11thcE16siwqSGSS9ANhVrqvfT2fWH
+1MiToswzMsrhQEfmZbLQT8PHC68E5JhJzh
 
 Thanks.
