@@ -15,15 +15,15 @@ later we join more and more information into this graph (e.g. balance we hold on
 
 Here DimensionTabler jumps in. We want to be able to see long term ticker graphs, and we want to be able to see short term graphs in more detail. Let's put this in a table:
 
-| Ticker date             | granularity        |       original count | dimension table count | save % | total % saved |
-|-------------------------|--------------------|---------------------:|----------------------:|-------:|--------------:|
-| last 24 hours           | every ticker value | every minute = 1,440 |                 1,440 |     0% |            0% |
-| last 7 days             | 15 minutes         |     (6 days) = 8,640 |            /15' = 576 |   6.7% |           20% |
-| last 30 days            | 1 hour             |               33,120 |                   552 |   1.7% |          5.9% |
-| last 90 days            | 4 hours            |               86,400 |                   360 |   0.4% |          2.3% |
-| before 90 days:         |                    |                      |                       |        |               |
-| ... stat for 1 year     | 1 day              |              396,000 |                   275 |   0.1% |          0.6% |
-| ... for another 9 years | 1 day              |            4,730,400 |                 3,285 |   0.1% |          0.1% |
+| Ticker date             | granularity        |       original count | dim.table count | reduced to % |
+|-------------------------|--------------------|---------------------:|----------------:|-------------:|
+| last 24 hours           | every ticker value | every minute = 1,440 |           1,440 |           0% |
+| last 7 days             | 15 minutes         |    (6 days) = +8,640 |     /15' = +576 |          20% |
+| last 30 days            | 1 hour             |              +33,120 |            +552 |         5.9% |
+| last 90 days            | 4 hours            |              +86,400 |            +360 |         2.3% |
+| before 90 days:         |                    |                      |                 |              |
+| ... stat for 1 year     | 1 day              |             +396,000 |            +275 |         0.6% |
+| ... for another 9 years | 1 day              |           +4,730,400 |          +3,285 |         0.1% |
 
 So for 10 years our graph sql result counts 6,488 lines, the unfiltered result has 5,256,000 lines. 
 Just by ignoring really unneded detail. DimensionTabler keeps this up-to-date and applies given rules.
