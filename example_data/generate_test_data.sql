@@ -1,4 +1,5 @@
 CREATE DATABASE `dimensiontabler_demo` /*!40100 DEFAULT CHARACTER SET utf8 */;
+USE `dimensiontabler_demo`;
 
 CREATE USER `dimensiontabler_demo`@`localhost` IDENTIFIED BY 'demo4711';
 GRANT SELECT ON `dimensiontabler_demo`.* TO `dimensiontabler_demo`@`localhost`;

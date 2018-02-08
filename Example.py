@@ -1,7 +1,12 @@
 from DimensionTabler import *
 
+# DB-Api connection
+import MySQLdb as mdb
+db = mdb.connect('localhost', 'dimensiontabler_demo', 'demo4711', 'dimensiontabler_demo');
+
 def getDTTickerConfig():
     config = DimensionTabler.Config("demo")
+    config.Db = db
     config.SqlMain = """
         SELECT 
             -- first column: identifier as identifier_name
@@ -19,7 +24,7 @@ def getDTTickerConfig():
         LIMIT 0,50
     """
     config.VariableConfigLst = [
-        DimensionTabler.Config.VariableConfig("var_iter", "SET @var_iter = VALUE;", 0),
+        DimensionTabler.Config.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
     ]
     return config
 

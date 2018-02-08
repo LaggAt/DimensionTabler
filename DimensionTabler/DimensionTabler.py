@@ -15,7 +15,7 @@ class DimensionTabler(object):
         else:
             raise Exception("Initialize with list of DimensionTabler.Config's.")
 
-    def _loop(self):
+    def _iteration(self):
         for worker in self._workerLst:
             # catch any exception before main loop
             try:
@@ -25,5 +25,5 @@ class DimensionTabler(object):
 
     def MainLoop(self, seconds=10):
         while True:
-            self._loop()
+            self._iteration()
             time.sleep(seconds)
