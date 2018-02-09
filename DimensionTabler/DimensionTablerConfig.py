@@ -8,6 +8,7 @@ class DimensionTablerConfig(object):
         self._db = None
         self._sqlMain = ""
         self._variableConfigLst = []
+        self._dimensions = []
 
     @property
     def Name(self):
@@ -60,7 +61,6 @@ class DimensionTablerConfig(object):
         @property
         def ValueDefault(self):
             return self._valueDefault
-
     @property
     def VariableConfigLst(self):
         return self._variableConfigLst
@@ -71,4 +71,32 @@ class DimensionTablerConfig(object):
         else:
             raise Exception("Value must be a list of DimensionTablerConfig.VariableConfig.")
 
+    DIMENSION_TIMESEC_PAST   = "PAST"
+    class DimensionConfig(object):
+        def __init__(self, description, timeSec, granularitySec):
+            self._description = description
+            if (not type(timeSec) is int) and (not timeSec == DimensionTablerConfig.DIMENSION_TIMESEC_PAST):
+                raise Exception("timeSec must be number of seconds or a DIMENSION_TIMESEC_* constant.")
+            self._timeSec = timeSec
+            if not type(granularitySec) is int:
+                raise Exception("granularitySec needs to be the wanted granularity in seconds.")
+            self._granularitySec = 1 if granularitySec == 0 else granularitySec #dont div/0
+        @property
+        def Description(self):
+            return self._description
+        @property
+        def TimeSec(self):
+            return self._timeSec
+        @property
+        def GranularitySec(self):
+            return self._granularitySec
+    @property
+    def Dimensions(self):
+        return self._dimensions
+    @Dimensions.setter
+    def Dimensions(self, value):
+        if (type(value) is list) and (all(type(element) is DimensionTablerConfig.DimensionConfig for element in value)):
+            self._dimensions = value
+        else:
+            raise Exception("Value must be a list of DimensionTablerConfig.DimensionConfig.")
 

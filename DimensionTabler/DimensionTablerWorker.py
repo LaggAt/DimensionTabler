@@ -1,39 +1,7 @@
-import urllib
-import hashlib
+from Cumulator import Cumulator
+from utils import datetimeUtil
+from vo.SourceRow import SourceRow
 
-class sourceRow(object):
-    def __init__(self, nameLst, row):
-        super(sourceRow, self).__init__()
-        self._timeSec = None
-        self._groups = {}
-        self._vars = {}
-        fieldLst = zip(nameLst, row)
-        self._idName, self._id = fieldLst[0]
-        for field, value in fieldLst[1:]:
-            if field == "time_sec":
-                self._timeSec = value
-                #TODO: also persist time_sec for time box?
-            elif field.startswith("group_"):
-                self._groups[field] = value
-            elif field.startswith("var_"):
-                varName = "@" + field
-                self._vars[varName] = value
-        if not self._timeSec:
-            raise Exception("We need a time_sec column (this will probably change in further versions).")
-        self._hash = hashlib.sha256(urllib.urlencode(self._groups)).hexdigest()
-
-    @property
-    def Vars(self):
-        return self._vars
-
-    def __eq__(self, other):
-        return self._hash == other._hash
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __str__(self):
-        return "ID %s = '%s'. time_sec = %s, equality hash %s, grouping = %s, vars = %s" % (
-            self._idName, self._id, self._timeSec, self._hash, repr(self._groups), repr(self._vars))
 
 class DimensionTablerWorker(object):
     def __init__(self, config):
@@ -57,7 +25,7 @@ class DimensionTablerWorker(object):
             nameLst = [x[0] for x in cur.description]
             rows = cur.fetchall()
             for row in rows:
-                yield sourceRow(nameLst, row)
+                yield SourceRow(nameLst, row)
         except db.Error as e:
             raise e
 
@@ -66,6 +34,7 @@ class DimensionTablerWorker(object):
             varConfig.Value = lastRow.Vars[varConfig.Name]
 
     def Work(self):
+        cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(), self._config.Dimensions)
         batchHasData = True
         while batchHasData:
             batchHasData = False
@@ -73,6 +42,7 @@ class DimensionTablerWorker(object):
                 batchHasData = True
                 #TODO: work on these items & create dimension table
                 print row
+                cumulator.AddRow(row)
             if batchHasData:
                 self._updateVars(row)
         print("Batch %s is current." % (self._config.Name,))

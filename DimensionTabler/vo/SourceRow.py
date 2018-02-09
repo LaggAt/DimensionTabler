@@ -1,0 +1,54 @@
+import urllib
+import hashlib
+from datetime import *
+import calendar
+
+class SourceRow(object):
+    def __init__(self, nameLst, row):
+        super(SourceRow, self).__init__()
+        self._timeSec = None
+        self._groups = {}
+        self._vars = {}
+        self._fx = {}
+        fieldLst = zip(nameLst, row)
+        self._idName, self._id = fieldLst[0]
+        for field, value in fieldLst[1:]:
+            if field == "time_sec":
+                self._timeSec = value
+                #TODO: also persist time_sec for time box?
+            elif field.startswith("group_"):
+                self._groups[field] = value
+            elif field.startswith("var_"):
+                varName = "@" + field
+                self._vars[varName] = value
+            elif field.startswith("fx_"):
+                self._fx[field] = value
+        if not self._timeSec:
+            raise Exception("We need a time_sec column (this will probably change in further versions).")
+        self._groupHash = hashlib.sha256(urllib.urlencode(self._groups)).hexdigest()
+
+    @property
+    def Id(self):
+        return self._id
+    @property
+    def TimeSec(self):
+        return self._timeSec
+    @property
+    def GroupHash(self):
+        return self._groupHash
+    @property
+    def UtcDate(self):
+        return datetime.utcfromtimestamp(self._timeSec)
+    @property
+    def Vars(self):
+        return self._vars
+
+    def __eq__(self, other):
+        return self._groupHash == other._hash
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __str__(self):
+        return "ID %s = '%s'. time_sec = %s, equality hash %s, grouping = %s, vars = %s" % (
+            self._idName, self._id, self._timeSec, self._groupHash, repr(self._groups), repr(self._vars))
+
