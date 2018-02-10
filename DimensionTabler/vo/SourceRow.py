@@ -12,10 +12,15 @@ class SourceRow(object):
         self._fx = {}
         fieldLst = zip(nameLst, row)
         self._idName, self._id = fieldLst[0]
+        # default fx for id
+        for field in [
+            "fx_first_%s_first" % (self._idName),
+            "fx_last_%s_last" % (self._idName)
+        ]:
+            self._fx[field] = self._id
         for field, value in fieldLst[1:]:
             if field == "time_sec":
                 self._timeSec = value
-                #TODO: also persist time_sec for time box?
             elif field.startswith("group_"):
                 self._groups[field] = value
             elif field.startswith("var_"):
@@ -37,11 +42,17 @@ class SourceRow(object):
     def GroupHash(self):
         return self._groupHash
     @property
+    def Grouping(self):
+        return self._groups
+    @property
     def UtcDate(self):
         return datetime.utcfromtimestamp(self._timeSec)
     @property
     def Vars(self):
         return self._vars
+    @property
+    def Fx(self):
+        return self._fx
 
     def __eq__(self, other):
         return self._groupHash == other._hash

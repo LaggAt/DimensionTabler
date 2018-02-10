@@ -1,10 +1,10 @@
 
 class DimensionTablerConfig(object):
-    def __init__(self, name):
+    def __init__(self, tableName):
         super(DimensionTablerConfig, self).__init__()
-        if not name:
+        if not tableName:
             raise Exception("Init the config with a name.")
-        self._name = name
+        self._name = tableName
         self._db = None
         self._sqlMain = ""
         self._variableConfigLst = []
@@ -21,7 +21,6 @@ class DimensionTablerConfig(object):
     def Db(self, value):
         self._db = value
 
-
     @property
     def SqlMain(self):
         return self._sqlMain
@@ -32,8 +31,9 @@ class DimensionTablerConfig(object):
             Column 'time_sec' is a unix timestamp for that line (currently we only support time box)
             Columns like 'group_%' will be used to group data in a time box
             Columns like 'var_%' contain variables, next sql uses last content as value. Init them in InitTuple
-            Columns like 'fx_%' are aggregated by the named function (planned for future releases)
-            todo: fx_first, fx_last, fx_min, fx_max
+            Columns like 'fx_%' are aggregated by the named function
+            supported functions see utils/fx.py. Currently first, last, min, max, avg, sum, count
+            TODO: support calculations, which need more than one value. e.g. weighted avg using fx_wavg-value_NAME, fx_wavg-weight_NAME
             """
         self._sqlMain = value
 

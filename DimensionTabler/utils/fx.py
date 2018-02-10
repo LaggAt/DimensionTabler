@@ -1,4 +1,4 @@
-
+import __builtin__
 
 def first(iter):
     if len(iter):
@@ -14,13 +14,27 @@ def last(iter):
 
 def min(iter):
     if len(iter):
-        return min(iter)
+        return __builtin__.min(iter)
     else:
         return None
 
 def max(iter):
     if len(iter):
-        return max(iter)
+        return __builtin__.max(iter)
     else:
         return None
 
+def avg(iter):
+    if len(iter):
+        return sum(iter) / count(iter)
+    else:
+        return None
+
+def sum(iter):
+    if len(iter):
+        return __builtin__.sum(iter)
+    else:
+        return 0
+
+def count(iter):
+    return len(iter)

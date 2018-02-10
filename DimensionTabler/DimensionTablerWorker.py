@@ -34,18 +34,15 @@ class DimensionTablerWorker(object):
             varConfig.Value = lastRow.Vars[varConfig.Name]
 
     def Work(self):
-        cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(), self._config.Dimensions)
+        cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(),
+                self._config)
         batchHasData = True
         while batchHasData:
             batchHasData = False
             for row in self._getData():
                 batchHasData = True
-                #TODO: work on these items & create dimension table
-                print row
+                print row #TODO: remove later, show progress somehow
                 cumulator.AddRow(row)
             if batchHasData:
                 self._updateVars(row)
         print("Batch %s is current." % (self._config.Name,))
-
-        # TODO: also delete outdated dimensions
-        pass

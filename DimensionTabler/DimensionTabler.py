@@ -1,5 +1,7 @@
 import time
 from DimensionTablerWorker import DimensionTablerWorker
+import sys
+import traceback
 
 class DimensionTabler(object):
     from DimensionTablerConfig import DimensionTablerConfig as Config
@@ -21,7 +23,9 @@ class DimensionTabler(object):
             try:
                 worker.Work()
             except Exception as ex:
-                print("%s: %s" % (worker._config.Name, ex.message))
+                print("%s: %s" % (worker._config.Name, repr(ex)))
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                traceback.print_tb(exc_traceback, file=sys.stdout)
 
     def MainLoop(self, seconds=10):
         while True:

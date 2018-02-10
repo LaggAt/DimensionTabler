@@ -5,11 +5,12 @@ import MySQLdb as mdb
 db = mdb.connect('localhost', 'dimensiontabler_demo', 'demo4711', 'dimensiontabler_demo');
 
 def getDTTickerConfig():
-    config = DimensionTabler.Config("demo")
+    config = DimensionTabler.Config("dt_ticker")
     config.Db = db
     config.SqlMain = """
         SELECT 
-            -- first column: identifier as identifier_name
+            -- first column: identifier as identifier_name, we will record the first & last id of the block
+            -- maybe later do a mapping table to all data rows considered, would be great for debugging
             ticker.id as wallet_id, 
             -- column named time_sec is the unix timestamp we use for our time window
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) AS time_sec,
@@ -27,6 +28,7 @@ def getDTTickerConfig():
             price as fx_avg_price_average
         FROM ticker
         WHERE CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) > @var_iter
+        -- order MUST always be time_sec asc
         ORDER BY ticker.dt
         LIMIT 0,500
     """
@@ -34,9 +36,9 @@ def getDTTickerConfig():
         DimensionTabler.Config.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
     ]
     config.Dimensions = [
-        #DimensionTabler.Config.DimensionConfig("  future",              0,        0),  # all values from future if any
-        #DimensionTabler.Config.DimensionConfig("last 24h",      -24*60*60,        0),  # all values for last day
-        #DimensionTabler.Config.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
+        DimensionTabler.Config.DimensionConfig("  future",              0,        0),  # all values from future if any
+        DimensionTabler.Config.DimensionConfig("last 24h",      -24*60*60,        0),  # all values for last day
+        DimensionTabler.Config.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
         DimensionTabler.Config.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour
         DimensionTabler.Config.DimensionConfig("last 90d",   -90*24*60*60,  4*60*60),  # every 4 hours
         DimensionTabler.Config.DimensionConfig("  before",
