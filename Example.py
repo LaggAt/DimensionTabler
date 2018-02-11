@@ -64,7 +64,28 @@ def getDTTickerConfig():
         DimTabConfig.DimensionConfig("  before",
                             DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
     ]
+    # keep us informed, pass a callback function. lambda isn't needed, we just wrap it up in a small class instance.
+    callbackHandler = CallbackHandler()
+    config.OnSourceRow = lambda worker: callbackHandler.InfoCallback(worker)
+    config.OnBatchCurrent = lambda worker: callbackHandler.BatchIsCurrent(worker)
     return config
+
+# callback examples:
+class CallbackHandler(object):
+    def __init__(self):
+        super(CallbackHandler, self).__init__()
+        self.cntSourceRows = 0
+
+    def InfoCallback(self, worker):
+        self.cntSourceRows += 1
+        # only output every 100's row:
+        if self.cntSourceRows % 10 == 0:
+            print ".",
+            if self.cntSourceRows % 100 == 0:
+                print "Worker %s working on: %s" % (worker.Config.Name, worker.CurrentSourceRow)
+
+    def BatchIsCurrent(self, worker):
+        print("Batch %s is current, worked on %s rows." % (worker._config.Name, self.cntSourceRows))
 
 if __name__ == "__main__":
     # you probably want more than one dimension table, so we use a list here

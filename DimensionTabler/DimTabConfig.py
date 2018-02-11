@@ -13,6 +13,8 @@ class DimTabConfig(object):
         self._sqlMain = ""
         self._variableConfigLst = []
         self._dimensions = []
+        self._onSourceRow = None
+        self._onBatchCurrent = None
 
     @property
     def Name(self):
@@ -104,3 +106,22 @@ class DimTabConfig(object):
         else:
             raise Exception("Value must be a list of DimensionTablerConfig.DimensionConfig.")
 
+    # we allow a single callback function whenever we start working on a source row
+    @property
+    def OnSourceRow(self):
+        return self._onSourceRow
+    @OnSourceRow.setter
+    def OnSourceRow(self, callback):
+        self._onSourceRow = self._validCallback(callback, 1, "<DimTabWorker instance>")
+
+    @property
+    def OnBatchCurrent(self):
+        return self._onBatchCurrent
+    @OnSourceRow.setter
+    def OnBatchCurrent(self, callback):
+        self._onBatchCurrent = self._validCallback(callback, 1, "<DimTabWorker instance>")
+
+    def _validCallback(self, callback, argCount, argumentHelpText):
+        if callback.func_code.co_argcount != 1:
+            raise Exception("Wrong parameter count. Syntax: %s(%s)" % (callback.func_code.co_name, argumentHelpText))
+        return callback

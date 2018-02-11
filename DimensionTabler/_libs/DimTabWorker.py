@@ -5,12 +5,14 @@
 
 from Cumulator import Cumulator
 from DimensionTabler._utils import datetimeUtil
+from DimensionTabler._utils.callbackHandler import _callback
 from DimensionTabler._vo.SourceRow import SourceRow
 
 class DimTabWorker(object):
     def __init__(self, config):
         super(DimTabWorker, self).__init__()
         self._config = config
+        self._currentSourceRow = None
 
     def _prepareSqlLst(self):
         sqlLst = []
@@ -37,6 +39,13 @@ class DimTabWorker(object):
         for varConfig in self._config.VariableConfigLst:
             varConfig.Value = lastRow.Vars[varConfig.Name]
 
+    @property
+    def Config(self):
+        return self._config
+    @property
+    def CurrentSourceRow(self):
+        return self._currentSourceRow
+
     def Work(self):
         cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(),
                 self._config)
@@ -45,8 +54,9 @@ class DimTabWorker(object):
             batchHasData = False
             for row in self._getData():
                 batchHasData = True
-                print row #TODO: remove later, show progress somehow
+                self._currentSourceRow = row
+                _callback(self, self._config._onSourceRow)
                 cumulator.AddRow(row)
             if batchHasData:
                 self._updateVars(row)
-        print("Batch %s is current." % (self._config.Name,))
+        _callback(self, self._config._onBatchCurrent)
