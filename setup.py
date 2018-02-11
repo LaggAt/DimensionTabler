@@ -24,7 +24,7 @@ def get_long_description():
 
 setup(
     name = "DimensionTabler",
-    version = "0.1.1",
+    version = "0.1.2",
     author = "Florian Lagg",
     author_email = "github@florian.lagg.at",
     description = ("Builds dimension tables with configurable/variable grainularity."
