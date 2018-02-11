@@ -1,26 +1,36 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# (c) 2018 Florian Lagg <github@florian.lagg.at>
+# Under Terms of GPL v3
+
 from DimensionTabler import *
 
 # DB-Api connection
 import MySQLdb as mdb
 db = mdb.connect('localhost', 'dimensiontabler_demo', 'demo4711', 'dimensiontabler_demo');
 
+# now we create an instance of DimTabConfig for each dimension table we want:
 def getDTTickerConfig():
-    config = DimensionTabler.Config("dt_ticker")
+    # here is the table name
+    config = DimTabConfig("dt_ticker")
+
+    # database connection to use (currently only mysql is tested, should work with any DB-Api compatible db).
     config.Db = db
+
+    # the sql must be ordered by time_sec, and must contain some fields. That said:
+    #   first column must be identifier of the detail table (We might add support for a linking table later).
+    #   time_sec is a unix timestamp, we use that for grouping into time windows
+    #   group_* fields will group results, here we use it to get a result per time box and currency
+    #   var_* are variables. see config.VariableConfigLst below.
+    #       in this example we use this feature for paging
+    #   fx_<method>_* are methods. Currently we only support methods using only a single input. This will change.
+    #       for a list of supported methods see ./DimensionTabler/_utils/fx.py
     config.SqlMain = """
         SELECT 
-            -- first column: identifier as identifier_name, we will record the first & last id of the block
-            -- maybe later do a mapping table to all data rows considered, would be great for debugging
             ticker.id as wallet_id, 
-            -- column named time_sec is the unix timestamp we use for our time window
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) AS time_sec,
-            -- columns named group_* group data. for every combination of groups we want exact 1 data line in a given time window
             currency as group_currency,
-            -- columns with var_* will be initialized as variables. 
-            -- This is needed for iterating over chunks of data (see where & limit) but can be used for anything else.
-            -- Variables must be initialized 
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) as var_iter,
-            -- Functions start with fx_<method>_ followed by a name 
             price as fx_first_price_open, 
             price as fx_last_price_close, 
             price as fx_min_price_low, 
@@ -32,23 +42,40 @@ def getDTTickerConfig():
         ORDER BY ticker.dt
         LIMIT 0,500
     """
+
+    # Variables: List of variables used in SQL.
+    #   They will be initialized with a initial value. A var_* field updates them on each data row.
     config.VariableConfigLst = [
-        DimensionTabler.Config.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
+        # they come with: a name without @, a SQL to initialize them including VALUE, the initial VALUE
+        DimTabConfig.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
     ]
+
+    # dimensions config: a human-readable name, a time in past/future in seconds, the granularity
+    #   'time in past/future' and 'granularity': for example see the 3rd line:
+    #       we want a dimension table entry every 15 minutes (granularity 15*60)
+    #       for each source data line which time_sec is between 1 day ago (2nd line: -24*60*60) and 7 days ago.
+    #       Got it?
     config.Dimensions = [
-        DimensionTabler.Config.DimensionConfig("  future",              0,        0),  # all values from future if any
-        DimensionTabler.Config.DimensionConfig("last 24h",      -24*60*60,        0),  # all values for last day
-        DimensionTabler.Config.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
-        DimensionTabler.Config.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour
-        DimensionTabler.Config.DimensionConfig("last 90d",   -90*24*60*60,  4*60*60),  # every 4 hours
-        DimensionTabler.Config.DimensionConfig("  before",
-                            DimensionTabler.Config.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
+        DimTabConfig.DimensionConfig("  future",              0,        0),  # all values from future if any
+        DimTabConfig.DimensionConfig("last 24h",      -24*60*60,        0),  # all values for last day
+        DimTabConfig.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
+        DimTabConfig.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour
+        DimTabConfig.DimensionConfig("last 90d",   -90*24*60*60,  4*60*60),  # every 4 hours
+        DimTabConfig.DimensionConfig("  before",
+                            DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
     ]
     return config
 
 if __name__ == "__main__":
+    # you probably want more than one dimension table, so we use a list here
     allConfigs = [
+        # get that whole config block from above:
         getDTTickerConfig(),
     ]
-    runner = DimensionTabler(allConfigs)
+
+    # get a instance of our runner
+    runner = DimTab(allConfigs)
+
+    # Dimension Tabler runs in a loop by default. Once it is finished, it will watch for new data every 10 seconds.
+    # if you want to use another main loop just call runner._iteration() from it. Beware this could take a long time.
     runner.MainLoop()

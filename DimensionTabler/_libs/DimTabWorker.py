@@ -1,11 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# (c) 2018 Florian Lagg <github@florian.lagg.at>
+# Under Terms of GPL v3
+
 from Cumulator import Cumulator
-from utils import datetimeUtil
-from vo.SourceRow import SourceRow
+from DimensionTabler._utils import datetimeUtil
+from DimensionTabler._vo.SourceRow import SourceRow
 
-
-class DimensionTablerWorker(object):
+class DimTabWorker(object):
     def __init__(self, config):
-        super(DimensionTablerWorker, self).__init__()
+        super(DimTabWorker, self).__init__()
         self._config = config
 
     def _prepareSqlLst(self):

@@ -1,8 +1,12 @@
-from DimensionTablerConfig import DimensionTablerConfig
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# (c) 2018 Florian Lagg <github@florian.lagg.at>
+# Under Terms of GPL v3
+
+from DimensionTabler.DimTabConfig import DimTabConfig
 from more_itertools import one
-from utils import fx
+from DimensionTabler._utils import fx, iterUtil
 import urllib
-from utils import iterUtil
 
 class Cumulator(object):
     def __init__(self, timeSecSnapshot, config):
@@ -14,10 +18,10 @@ class Cumulator(object):
 
     def _createDimensions(self, timeSecSnapshot, dimensions):
         self._dimensionPast = one(
-            [dim for dim in dimensions if dim.TimeSec == DimensionTablerConfig.DIMENSION_TIMESEC_PAST])
+            [dim for dim in dimensions if dim.TimeSec == DimTabConfig.DIMENSION_TIMESEC_PAST])
         self._dimensionStartingTimeSec = {}
         dimensionsOrdered = sorted(
-            [dim for dim in dimensions if dim.TimeSec <> DimensionTablerConfig.DIMENSION_TIMESEC_PAST],
+            [dim for dim in dimensions if dim.TimeSec <> DimTabConfig.DIMENSION_TIMESEC_PAST],
             key = lambda dim: dim.TimeSec)
         for dim in dimensionsOrdered:
             # we want the same ranges within a timebox, so get start of timebox:

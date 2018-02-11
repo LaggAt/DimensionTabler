@@ -1,3 +1,6 @@
+-- (c) 2018 Florian Lagg <github@florian.lagg.at>
+-- Under Terms of GPL v3
+
 CREATE DATABASE `dimensiontabler_demo` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `dimensiontabler_demo`;
 
@@ -5,7 +8,7 @@ CREATE USER `dimensiontabler_demo`@`localhost` IDENTIFIED BY 'demo4711';
 GRANT ALL ON `dimensiontabler_demo`.* TO `dimensiontabler_demo`@`localhost`;
 FLUSH privileges;
 
-DROP TABLE `ticker`;
+-- DROP TABLE `ticker`;
 
 CREATE TABLE `ticker` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique identifier',

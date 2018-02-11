@@ -30,7 +30,7 @@ Just by ignoring really unneded detail. DimensionTabler keeps this up-to-date an
 
 ## Usage
 
-Will follow with the first release.
+See [Example.py](https://github.com/LaggAt/DimensionTabler/blob/master/Example.py)
 
 ## Donate
 

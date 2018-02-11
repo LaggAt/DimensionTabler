@@ -1,18 +1,23 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# (c) 2018 Florian Lagg <github@florian.lagg.at>
+# Under Terms of GPL v3
+
 import time
-from DimensionTablerWorker import DimensionTablerWorker
+from _libs.DimTabWorker import DimTabWorker
+from DimTabConfig import DimTabConfig as Config
 import sys
 import traceback
 
-class DimensionTabler(object):
-    from DimensionTablerConfig import DimensionTablerConfig as Config
+class DimTab(object):
 
     def __init__(self, configLst):
-        super(DimensionTabler, self).__init__()
+        super(DimTab, self).__init__()
         self._workerLst = []
-        if (type(configLst) is list) and (all(type(element) is DimensionTabler.Config for element in configLst)):
+        if (type(configLst) is list) and (all(type(element) is Config for element in configLst)):
             for config in configLst:
                 self._workerLst.append(
-                    DimensionTablerWorker(config)
+                    DimTabWorker(config)
                 )
         else:
             raise Exception("Initialize with list of DimensionTabler.Config's.")

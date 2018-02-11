@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# (c) 2018 Florian Lagg <github@florian.lagg.at>
+# Under Terms of GPL v3
 
-class DimensionTablerConfig(object):
+class DimTabConfig(object):
     def __init__(self, tableName):
-        super(DimensionTablerConfig, self).__init__()
+        super(DimTabConfig, self).__init__()
         if not tableName:
             raise Exception("Init the config with a name.")
         self._name = tableName
@@ -66,16 +70,16 @@ class DimensionTablerConfig(object):
         return self._variableConfigLst
     @VariableConfigLst.setter
     def VariableConfigLst(self, value):
-        if (type(value) is list) and (all(type(element) is DimensionTablerConfig.VariableConfig for element in value)):
+        if (type(value) is list) and (all(type(element) is DimTabConfig.VariableConfig for element in value)):
             self._variableConfigLst = value
         else:
-            raise Exception("Value must be a list of DimensionTablerConfig.VariableConfig.")
+            raise Exception("Value must be a list of DimTabConfig.VariableConfig.")
 
     DIMENSION_TIMESEC_PAST   = "PAST"
     class DimensionConfig(object):
         def __init__(self, description, timeSec, granularitySec):
             self._description = description
-            if (not type(timeSec) is int) and (not timeSec == DimensionTablerConfig.DIMENSION_TIMESEC_PAST):
+            if (not type(timeSec) is int) and (not timeSec == DimTabConfig.DIMENSION_TIMESEC_PAST):
                 raise Exception("timeSec must be number of seconds or a DIMENSION_TIMESEC_* constant.")
             self._timeSec = timeSec
             if not type(granularitySec) is int:
@@ -95,7 +99,7 @@ class DimensionTablerConfig(object):
         return self._dimensions
     @Dimensions.setter
     def Dimensions(self, value):
-        if (type(value) is list) and (all(type(element) is DimensionTablerConfig.DimensionConfig for element in value)):
+        if (type(value) is list) and (all(type(element) is DimTabConfig.DimensionConfig for element in value)):
             self._dimensions = value
         else:
             raise Exception("Value must be a list of DimensionTablerConfig.DimensionConfig.")
