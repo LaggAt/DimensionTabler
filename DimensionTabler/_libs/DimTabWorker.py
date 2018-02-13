@@ -7,12 +7,15 @@ from Cumulator import Cumulator
 from DimensionTabler._utils import datetimeUtil
 from DimensionTabler._utils.callbackHandler import _callback
 from DimensionTabler._vo.SourceRow import SourceRow
+from _libs.SchemaUpdater import SchemaUpdater
+
 
 class DimTabWorker(object):
     def __init__(self, config):
         super(DimTabWorker, self).__init__()
         self._config = config
         self._currentSourceRow = None
+        self._isSchemaOK = False
 
     def _prepareSqlLst(self):
         sqlLst = []
@@ -31,9 +34,15 @@ class DimTabWorker(object):
             nameLst = [x[0] for x in cur.description]
             rows = cur.fetchall()
             for row in rows:
-                yield SourceRow(nameLst, row)
+                sRow = SourceRow(nameLst, row)
+                if not self._isSchemaOK:
+                    SchemaUpdater(self._config, cur, sRow)
+                    self._isSchemaOK = True
+                yield sRow
         except db.Error as e:
             raise e
+        finally:
+            cur.close()
 
     def _updateVars(self, lastRow):
         for varConfig in self._config.VariableConfigLst:
@@ -47,8 +56,7 @@ class DimTabWorker(object):
         return self._currentSourceRow
 
     def Work(self):
-        cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(),
-                self._config)
+        cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(), self._config)
         batchHasData = True
         while batchHasData:
             batchHasData = False

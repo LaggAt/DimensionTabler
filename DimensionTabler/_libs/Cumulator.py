@@ -5,8 +5,9 @@
 
 from DimensionTabler.DimTabConfig import DimTabConfig
 from more_itertools import one
-from DimensionTabler._utils import fx, iterUtil
+from DimensionTabler._utils import fxHandler, iterUtil
 import urllib
+from DimensionTabler._vo.DimensionTableRow import DimensionTableRow
 
 class Cumulator(object):
     def __init__(self, timeSecSnapshot, config):
@@ -74,57 +75,45 @@ class Cumulator(object):
     def _cumulateBlock(self, block):
         blockResults = {}
         for groupHash in block['groups']:
-            group = block['groups'][groupHash]
-            groupResults = {}
-            if len(group):
-                #timeSec & Grouping
-                for f in group[0].Fx:
-                    ignore, method, name = f.split("_", 2)
-                    valueLst = [e.Fx[f] for e in group]
-                    groupResults[name] = fx.__dict__[method](valueLst)
-                for g in group[0].Grouping:
-                    groupResults[g] = group[0].Grouping[g]
-            else:
-                pass #group is empty
+            sourceRowLst = block['groups'][groupHash]
+            groupResults =  fxHandler.AggregateGroupResults(sourceRowLst)
             blockResults[groupHash] = groupResults
         return blockResults
 
-    def _updateDimensionTableRow(self, timeSecGroup, dtRow):
-        fields = [e for e in dtRow if not e.startswith("group_")]
-        fieldsValues = [dtRow[f] for f in fields]
-        groups = [e for e in dtRow if     e.startswith("group_")]
-        groupsValues = [dtRow[f] for f in groups]
-        groups.append('time_sec')
-        groupsValues.append(timeSecGroup)
+    def _updateDimensionTableRow(self, timeSecGroup, sourceRow):
+        dimT = DimensionTableRow(timeSecGroup, sourceRow)
 
         db = self._config.Db
         # update or insert?
-        sql = "SELECT " + ", ".join(groups) + \
+        sql = "SELECT " + ", ".join(dimT.Groups) + \
             " FROM " + self._config.Name + \
-            " WHERE " + " and ".join([e + " = %s" for e in groups]) + ";"
-        params = groupsValues
+            " WHERE " + " and ".join([e + " = %s" for e in dimT.Groups]) + ";"
+        params = dimT.GroupsValues
         try:
             cur = db.cursor()
             cur.execute(sql, params)
             dbRow = cur.fetchone()
+            cur.close()
         except db.Error as e:
             raise e
 
         # try update
         if dbRow:
-            sql = "UPDATE " + self._config.Name + " SET " + ", ".join([e + " = %s" for e in fields]) + " " + \
-                  "WHERE " + " and ".join([e + " = %s" for e in groups]) + ";"
-            params = fieldsValues + \
-                 groupsValues
+            sql = "UPDATE " + self._config.Name + \
+                  " SET " + ", ".join([e + " = %s" for e in dimT.Fields]) + " " + \
+                  "WHERE " + " and ".join([e + " = %s" for e in dimT.Groups]) + ";"
+            params = dimT.FieldsValues + \
+                     dimT.GroupsValues
         else:
             #insert
-            sql = "INSERT " + self._config.Name + " (" + ", ".join(fields + groups) + ") " + \
-                  "VALUES(" + ", ".join(["%s" for e in fields + groups]) + ");"
-            params = fieldsValues + groupsValues
+            sql = "INSERT " + self._config.Name + " (" + ", ".join(dimT.Fields + dimT.Groups) + ") " + \
+                  "VALUES(" + ", ".join(["%s" for e in dimT.Fields + dimT.Groups]) + ");"
+            params = dimT.FieldsValues + dimT.GroupsValues
         try:
             cur = db.cursor()
             cur.execute(sql, params)
             db.commit()
+            cur.close()
         except db.Error as e:
             raise e
 
