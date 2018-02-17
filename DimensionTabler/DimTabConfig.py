@@ -15,6 +15,7 @@ class DimTabConfig(object):
         self._sqlMain = ""
         self._variableConfigLst = []
         self._dimensions = []
+        self._fillGapsWithPreviousResult = False
         self._onSourceRow = None
         self._onBatchCurrent = None
         self._onRedoPastRows = None
@@ -109,6 +110,16 @@ class DimTabConfig(object):
             self._dimensions = value
         else:
             raise Exception("Value must be a list of DimensionTablerConfig.DimensionConfig.")
+
+    @property
+    def FillGapsWithPreviousResult(self):
+        return self._fillGapsWithPreviousResult
+    @FillGapsWithPreviousResult.setter
+    def FillGapsWithPreviousResult(self, value):
+        if type(value) is bool:
+            self._fillGapsWithPreviousResult = value
+        else:
+            raise Exception("Value must be a bool. True fills empty time_sec/groups with results from previous time_sec")
 
     # we allow a single callback function whenever we start working on a source row
     @property

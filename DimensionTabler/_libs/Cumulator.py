@@ -97,32 +97,25 @@ class Cumulator(object):
         return start
 
     def AddRow(self, row):
+        # make them available for callbacks
         self._currentTimeSec = row.TimeSec
         self._currentRow = row
-        timeSecStart = 0
-        dim = self._dimensionPast
-        for timeSecStart in sorted((self._dimensionStartingTimeSec).keys()):
-            if row.TimeSec >= timeSecStart:
-                dim = self._dimensionStartingTimeSec[timeSecStart]
-            else:
-                break
+        # get the dimension this row is in
         timeSecGroup = row.TimeSec
+        dim = self._getDimensionForTimeSec(timeSecGroup)
+        # we are in dimension dim, determine group time_sec this row is in
         if dim.GranularitySec:
             timeSecGroup = (timeSecGroup // dim.GranularitySec) * dim.GranularitySec
         # create structure self._groupedRows[timeSecGroup]['groups']['hash'][row,row,...]
-        if not timeSecGroup in self._groupedRows:
-            self._groupedRows[timeSecGroup] = {
-                'dirty': True, # changed since cumulation
-                'dimension': dim,
-                'groups': {}
-            }
+        #we have no row in that group, so create it (and all missing in between the previous one)
+        self._addGroupedRows(dim, timeSecGroup)
+        # if we havn't seen this grouping, this is also missing
         if not row.GroupHash in self._groupedRows[timeSecGroup]['groups']:
             self._groupedRows[timeSecGroup]['groups'][row.GroupHash] = []
-        #duplicate check & add
+        #duplicate check for row & add
         if not any(r.Id == row.Id for r in self._groupedRows[timeSecGroup]['groups'][row.GroupHash]):
             self._groupedRows[timeSecGroup]['groups'][row.GroupHash].append(row)
             self._groupedRows[timeSecGroup]['dirty'] = True #not already persisted
-        #TODO: eventually cumulate and clean in blocks, not on every row, but often enough to show almost real time data.
         # Maybe time based if no cumulation happend for more than 30s?
         #cumulate & delete old data
         timeSecObsolete = timeSecGroup - dim.GranularitySec
@@ -131,6 +124,44 @@ class Cumulator(object):
             rowsBlock = self._groupedRows[timeSecBlock]
             if timeSecBlock <= timeSecObsolete and not rowsBlock['dirty']:
                 self._groupedRows.pop(timeSecBlock)
+
+    def _getDimensionForTimeSec(self, checkTimeSec):
+        dim, timeSecDim = self._getDimensionAndTimeSecForTimeSec(checkTimeSec)
+        return dim
+    def _getDimensionAndTimeSecForTimeSec(self, checkTimeSec):
+        timeSecDim = 0
+        dim = self._dimensionPast
+        for timeSecKey in sorted((self._dimensionStartingTimeSec).keys()):
+            if checkTimeSec >= timeSecKey:
+                dim = self._dimensionStartingTimeSec[timeSecKey]
+                timeSecDim = timeSecKey
+            else:
+                break
+        return dim, timeSecDim
+
+    def _addGroupedRows(self, dim, timeSecGroup):
+        # create this dimension group
+        if not timeSecGroup in self._groupedRows:
+            self._groupedRows[timeSecGroup] = {
+                'dirty': True,  # changed since cumulation
+                'dimension': dim,
+                'groups': {}
+            }
+        # is there an earlier time_sec?
+        if [k for k in self._groupedRows.keys() if k < timeSecGroup]:
+            # get earlier dimension group
+            earlierTimeSec = timeSecGroup - 1
+            earlierDim, earlierTimeSecDim = self._getDimensionAndTimeSecForTimeSec(earlierTimeSec)
+            if earlierDim.GranularitySec:
+                earlierTimeSec = (earlierTimeSec // earlierDim.GranularitySec) * earlierDim.GranularitySec
+            # create that earlier group (and all earliers to the next existing
+            self._addGroupedRows(earlierDim, earlierTimeSec)
+            # add groups (hashes) for earlier groups, needed for deletion of old lines or generation of missing data
+            for earlierGroupHash in self._groupedRows[earlierTimeSec]['groups']:
+                if not earlierGroupHash in self._groupedRows[timeSecGroup]['groups']:
+                    self._groupedRows[timeSecGroup]['groups'][earlierGroupHash] = []
+                    self._groupedRows[timeSecGroup]['dirty'] = True
+        pass
 
     def CumulateTimeSec(self):
         # cumulate and update only every 10 seconds
@@ -149,7 +180,7 @@ class Cumulator(object):
                         not blockHash in self._dimTableBlock[timeSecBlock].keys()) \
                                 or (urllib.urlencode(blockResult[blockHash]) != urllib.urlencode(
                             self._dimTableBlock[timeSecBlock][blockHash])):
-                            self._updateDimensionTableRow(timeSecBlock, blockResult[blockHash])
+                            self._updateDimensionTableRow(timeSecBlock, blockResult[blockHash], rowsBlock['groups'][blockHash])
                     # these are written, so remember and clear dirty flag
                     self._dimTableBlock[timeSecBlock] = blockResult
                     rowsBlock['dirty'] = False
@@ -158,12 +189,20 @@ class Cumulator(object):
         blockResults = {}
         for groupHash in block['groups']:
             sourceRowLst = block['groups'][groupHash]
-            groupResults =  fxHandler.AggregateGroupResults(sourceRowLst)
-            blockResults[groupHash] = groupResults
+            if len(sourceRowLst):
+                groupResults = fxHandler.AggregateGroupResults(sourceRowLst)
+                blockResults[groupHash] = groupResults
+            else:
+                # Fill gaps with previous time_sec result?
+                if self._config.FillGapsWithPreviousResult:
+                    pass #TODO: find previous result and set it as result for blockResults[groupHash]
+                else:
+                    pass # leave the gaps
         return blockResults
 
-    def _updateDimensionTableRow(self, timeSecGroup, sourceRow):
-        dimT = DimensionTableRow(timeSecGroup, sourceRow)
+    def _updateDimensionTableRow(self, timeSecGroup, cumulatedRow, sourceRowLst):
+        #TODO per config co linking to source rows, see sourceRowLst
+        dimT = DimensionTableRow(timeSecGroup, cumulatedRow)
         db = self._config.Db
         dbRow = None
 

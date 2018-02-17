@@ -69,6 +69,12 @@ def getDTTickerConfig():
         DimTabConfig.DimensionConfig("  before",
                             DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
     ]
+
+    # Options: Fill Gaps
+    # We create a dimension table line for each time_sec and group_*, by default if data is missing we ignore that.
+    # with this setting on we fill these gaps with the previous result.
+    config.FillGapsWithPreviousResult = True
+
     # keep us informed, pass a callback function. lambda isn't needed, we just wrap it up in a small class instance.
     callbackHandler = CallbackHandler()
     config.OnSourceRow = lambda worker: callbackHandler.InfoCallback(worker)
