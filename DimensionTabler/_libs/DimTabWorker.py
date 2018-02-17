@@ -16,6 +16,15 @@ class DimTabWorker(object):
         self._config = config
         self._currentSourceRow = None
         self._isSchemaOK = False
+        self._lastRunTimeSec = 0
+        self._cumulator = Cumulator(self._setGetLastRunTimeSec(), self._config)
+
+    @property
+    def LastRunTimeSec(self):
+        return self._lastRunTimeSec
+    def _setGetLastRunTimeSec(self):
+        self._lastRunTimeSec = datetimeUtil.getUtcNowSeconds()
+        return self._lastRunTimeSec
 
     def _prepareSqlLst(self):
         sqlLst = []
@@ -23,30 +32,28 @@ class DimTabWorker(object):
             val = str(varConfig.Value)
             sqlLst.append(varConfig.Sql.replace("VALUE", val))
         sqlLst.append(self._config.SqlMain)
-        return sqlLst # ";\n".join(sqlLst)
+        return sqlLst
 
     def _getData(self):
         db = self._config.Db
-        try:
-            cur = db.cursor()
+        with db as cur:
             for sql in self._prepareSqlLst():
                 cur.execute(sql)
             nameLst = [x[0] for x in cur.description]
             rows = cur.fetchall()
-            for row in rows:
-                sRow = SourceRow(nameLst, row)
-                if not self._isSchemaOK:
-                    SchemaUpdater(self._config, cur, sRow)
-                    self._isSchemaOK = True
-                yield sRow
-        except db.Error as e:
-            raise e
-        finally:
-            cur.close()
+        for row in rows:
+            sRow = SourceRow(nameLst, row)
+            if not self._isSchemaOK:
+                SchemaUpdater(self._config, cur, sRow)
+                self._isSchemaOK = True
+            yield sRow
 
     def _updateVars(self, lastRow):
         for varConfig in self._config.VariableConfigLst:
-            varConfig.Value = lastRow.Vars[varConfig.Name]
+            if lastRow is None: #back to defaults
+                varConfig.Value = varConfig.ValueDefault
+            else:
+                varConfig.Value = lastRow.Vars[varConfig.Name]
 
     @property
     def Config(self):
@@ -54,17 +61,47 @@ class DimTabWorker(object):
     @property
     def CurrentSourceRow(self):
         return self._currentSourceRow
+    @property
+    def Cumulator(self):
+        return self._cumulator
 
     def Work(self):
-        cumulator = Cumulator(datetimeUtil.getUtcNowSeconds(), self._config)
+        self._setGetLastRunTimeSec()
+        # run most current batch (beginning with last run time max)
+        if self._cumulator.CurrentTimeSec > self.LastRunTimeSec:
+            self._setOldStartPoint(self.LastRunTimeSec)
+        self._workBatch()
+        # re-work if old dimension table entries must update
+        fromTimeSec = self._cumulator.FirstTimeOfShiftedDimension(self.LastRunTimeSec)
+        if fromTimeSec:
+            #TODO: find dimension table row earlier fromTimeSec, create/update/delete all rows from that
+            self._setOldStartPoint(fromTimeSec)
+            _callback(self, self._config.OnJumpBack)
+            self._workBatch()
+
+    def _setOldStartPoint(self, beforeTimeSec):
+        db = self._config.Db
+        sRow = None
+        with db as cur:
+            sql = "select * from %s WHERE time_sec <= %s ORDER BY time_sec desc LIMIT 1" % (
+                self.Config.Name, beforeTimeSec)
+            cur.execute(sql)
+            row = cur.fetchone()
+            if row:
+                nameLst = [x[0] for x in cur.description]
+                sRow = SourceRow(nameLst, row)
+        self._updateVars(sRow)
+
+    def _workBatch(self):
         batchHasData = True
         while batchHasData:
             batchHasData = False
             for row in self._getData():
                 batchHasData = True
                 self._currentSourceRow = row
-                _callback(self, self._config._onSourceRow)
-                cumulator.AddRow(row)
+                _callback(self, self._config.OnSourceRow)
+                self._cumulator.AddRow(row)
             if batchHasData:
                 self._updateVars(row)
-        _callback(self, self._config._onBatchCurrent)
+        self._cumulator.CumulateTimeSec()
+        _callback(self, self._config.OnBatchCurrent)

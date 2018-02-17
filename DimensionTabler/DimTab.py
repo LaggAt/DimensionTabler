@@ -32,7 +32,7 @@ class DimTab(object):
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_tb(exc_traceback, file=sys.stdout)
 
-    def MainLoop(self, seconds=10):
+    def MainLoop(self, seconds=1):
         while True:
             self._iteration()
             time.sleep(seconds)

@@ -13,16 +13,9 @@ class SchemaUpdater(object):
 
         # get columns of existing table
         sql = "SELECT * FROM " + config.Name + " limit 1;"
-        try:
-            cur = db.cursor()
+        with db as cur:
             cur.execute(sql)
             columnMetadataDimTable = self._descriptionToMetadata(cur.description)
-            cur.close()
-        except db.Error as e:
-            raise e
-
-        #metadataSource = self._descriptionToMetadata(sRow)
-        #dimT = DimensionTableRow(metadataSource['time_sec'], metadataSource)
 
         # get needed schema from data row
         #CumulateBlock

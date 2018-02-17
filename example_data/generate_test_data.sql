@@ -22,12 +22,12 @@ DELIMITER $$
 CREATE PROCEDURE generate_demo_data(in daySub INT)
 BEGIN
   DECLARE i INT DEFAULT 0;
-  WHILE i < 24*60*4 DO -- about every minute for 4 currencies
+  WHILE i <= 24*60*4 DO -- about every minute for 4 currencies
     INSERT INTO `ticker` 
     (`dt`,`currency`,`price`) VALUES (
 		FROM_UNIXTIME(
 			UNIX_TIMESTAMP(date_sub(now(), interval daySub day))
-			+ FLOOR(RAND()*7*24*60*60)),
+			+ FLOOR(RAND()*24*60*60)),
         ELT(
 			FLOOR(RAND()*4)+1, 
 			'BTC', 'ETH', 'LTC', 'IOTA'),
@@ -53,6 +53,7 @@ DROP PROCEDURE generate_demo_data;
 CREATE TABLE `dt_ticker` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time_sec` int(11) NOT NULL,
+  `time_sec_insert` INT(11) NOT NULL DEFAULT 0,
   `group_currency` varchar(45) NOT NULL,
   `wallet_id_first` int(11) NOT NULL,
   `wallet_id_last` int(11) NOT NULL,
@@ -61,8 +62,10 @@ CREATE TABLE `dt_ticker` (
   `price_low` decimal(18,8) DEFAULT NULL,
   `price_close` decimal(18,8) DEFAULT NULL,
   `price_average` DECIMAL(18,8) DEFAULT NULL,
+  `var_iter` int(11) NULL,
   PRIMARY KEY (`id`),
   KEY `group_idx` (`time_sec`,`group_currency`),
   KEY `first_wallet_id_idx` (`wallet_id_first`),
   KEY `last_wallet_id_idx` (`wallet_id_last`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+

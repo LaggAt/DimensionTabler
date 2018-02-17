@@ -56,11 +56,16 @@ def getDTTickerConfig():
     #       for each source data line which time_sec is between 1 day ago (2nd line: -24*60*60) and 7 days ago.
     #       Got it?
     config.Dimensions = [
-        DimTabConfig.DimensionConfig("  future",              0,        0),  # all values from future if any
-        DimTabConfig.DimensionConfig("last 24h",      -24*60*60,        0),  # all values for last day
+        DimTabConfig.DimensionConfig("  future",              0,        0),  # every value from future if any
+        DimTabConfig.DimensionConfig("last  1h",         -60*60,        0),  # every value for last hour
+        DimTabConfig.DimensionConfig("last  3h",       -3*60*60,       60),  # every minute a value for last 3 hours
+        DimTabConfig.DimensionConfig("last  5h",       -5*60*60,     3*60),  # every value for last hour
+        DimTabConfig.DimensionConfig("last 24h",      -24*60*60,     5*60),  # every minute for last day
         DimTabConfig.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
         DimTabConfig.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour
-        DimTabConfig.DimensionConfig("last 90d",   -90*24*60*60,  4*60*60),  # every 4 hours
+        DimTabConfig.DimensionConfig("last 90d",   -90*24*60*60,  6*60*60),  # every 6 hours
+        DimTabConfig.DimensionConfig("one year",  -361*24*60*60, 12*60*60),  # every 12 hours
+        DimTabConfig.DimensionConfig("15' year",  -368*24*60*60,    15*60),  # get 7 days in 15' resolution again!
         DimTabConfig.DimensionConfig("  before",
                             DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
     ]
@@ -68,6 +73,7 @@ def getDTTickerConfig():
     callbackHandler = CallbackHandler()
     config.OnSourceRow = lambda worker: callbackHandler.InfoCallback(worker)
     config.OnBatchCurrent = lambda worker: callbackHandler.BatchIsCurrent(worker)
+    config.OnJumpBack = lambda worker: callbackHandler.JumpBack(worker)
     return config
 
 # callback examples:
@@ -86,6 +92,14 @@ class CallbackHandler(object):
 
     def BatchIsCurrent(self, worker):
         print("Batch %s is current, worked on %s rows." % (worker._config.Name, self.cntSourceRows))
+
+    def JumpBack(self, worker):
+        nextDimText = "-"
+        dim = worker.Cumulator.NextDimension
+        if dim:
+            nextDimText = dim.Description
+        print("Old dimensions are outdated, jumping back before dimension %s time_sec %s" % (
+            nextDimText, worker.Cumulator.CurrentTimeSec,))
 
 if __name__ == "__main__":
     # you probably want more than one dimension table, so we use a list here

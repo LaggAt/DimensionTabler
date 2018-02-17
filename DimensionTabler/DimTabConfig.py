@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
+from _utils.dbHandler import DbHandler
+
 
 class DimTabConfig(object):
     def __init__(self, tableName):
@@ -15,6 +17,8 @@ class DimTabConfig(object):
         self._dimensions = []
         self._onSourceRow = None
         self._onBatchCurrent = None
+        self._onRedoPastRows = None
+        self._onJumpBack = None
 
     @property
     def Name(self):
@@ -22,7 +26,7 @@ class DimTabConfig(object):
 
     @property
     def Db(self):
-        return self._db
+        return DbHandler(self._db)
     @Db.setter
     def Db(self, value):
         self._db = value
@@ -86,7 +90,7 @@ class DimTabConfig(object):
             self._timeSec = timeSec
             if not type(granularitySec) is int:
                 raise Exception("granularitySec needs to be the wanted granularity in seconds.")
-            self._granularitySec = 1 if granularitySec == 0 else granularitySec #dont div/0
+            self._granularitySec = granularitySec #dont div/0
         @property
         def Description(self):
             return self._description
@@ -117,9 +121,16 @@ class DimTabConfig(object):
     @property
     def OnBatchCurrent(self):
         return self._onBatchCurrent
-    @OnSourceRow.setter
+    @OnBatchCurrent.setter
     def OnBatchCurrent(self, callback):
         self._onBatchCurrent = self._validCallback(callback, 1, "<DimTabWorker instance>")
+
+    @property
+    def OnJumpBack(self):
+        return self._onJumpBack
+    @OnJumpBack.setter
+    def OnJumpBack(self, callback):
+        self._onJumpBack = self._validCallback(callback, 1, "<DimTabWorker instance>")
 
     def _validCallback(self, callback, argCount, argumentHelpText):
         if callback.func_code.co_argcount != 1:
