@@ -12,11 +12,15 @@ class DimensionTableRow(object):
         groups.append('time_sec')
         groupsValues.append(timeSecGroup)
 
+        self._sourceRow = sourceRow
         self._fields = fields
         self._fieldsValues = fieldsValues
         self._groups = groups
         self._groupsValues = groupsValues
 
+    @property
+    def SourceRow(self):
+        return self._sourceRow
     @property
     def Fields(self):
         return self._fields

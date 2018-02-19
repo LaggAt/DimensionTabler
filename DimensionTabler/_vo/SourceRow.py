@@ -35,6 +35,7 @@ class SourceRow(object):
         if not self._timeSec:
             raise Exception("We need a time_sec column (this will probably change in further versions).")
         self._groupHash = hashlib.sha256(urllib.urlencode(self._groups)).hexdigest()
+        self._fullHash =  hashlib.sha256(urllib.urlencode(fieldLst)).hexdigest()
 
     @property
     def Id(self):
@@ -59,7 +60,7 @@ class SourceRow(object):
         return self._fx
 
     def __eq__(self, other):
-        return self._groupHash == other._hash
+        return self._fullHash == other._fullHash
     def __ne__(self, other):
         return not self.__eq__(other)
 

@@ -16,15 +16,15 @@ class DimTabWorker(object):
         self._config = config
         self._currentSourceRow = None
         self._isSchemaOK = False
-        self._lastRunTimeSec = 0
-        self._cumulator = Cumulator(self._setGetLastRunTimeSec(), self._config)
+        self._CurrentTimeSec = 0
+        self._cumulator = Cumulator(self._setGetCurrentTimeSec(), self._config)
 
     @property
-    def LastRunTimeSec(self):
-        return self._lastRunTimeSec
-    def _setGetLastRunTimeSec(self):
-        self._lastRunTimeSec = datetimeUtil.getUtcNowSeconds()
-        return self._lastRunTimeSec
+    def CurrentTimeSec(self):
+        return self._CurrentTimeSec
+    def _setGetCurrentTimeSec(self):
+        self._CurrentTimeSec = datetimeUtil.getUtcNowSeconds()
+        return self._CurrentTimeSec
 
     def _prepareSqlLst(self):
         sqlLst = []
@@ -66,13 +66,13 @@ class DimTabWorker(object):
         return self._cumulator
 
     def Work(self):
-        self._setGetLastRunTimeSec()
+        self._setGetCurrentTimeSec()
         # run most current batch (beginning with last run time max)
-        if self._cumulator.CurrentTimeSec > self.LastRunTimeSec:
-            self._setOldStartPoint(self.LastRunTimeSec)
+        if self._cumulator.CurrentTimeSec > self.CurrentTimeSec:
+            self._setOldStartPoint(self.CurrentTimeSec)
         self._workBatch()
         # re-work if old dimension table entries must update
-        fromTimeSec = self._cumulator.FirstTimeOfShiftedDimension(self.LastRunTimeSec)
+        fromTimeSec = self._cumulator.FirstTimeOfShiftedDimension(self.CurrentTimeSec)
         if fromTimeSec:
             #TODO: find dimension table row earlier fromTimeSec, create/update/delete all rows from that
             self._setOldStartPoint(fromTimeSec)
@@ -103,5 +103,5 @@ class DimTabWorker(object):
                 self._cumulator.AddRow(row)
             if batchHasData:
                 self._updateVars(row)
-        self._cumulator.CumulateTimeSec()
+        self._cumulator.DoCumulate()
         _callback(self, self._config.OnBatchCurrent)

@@ -16,10 +16,13 @@ class DimTabConfig(object):
         self._variableConfigLst = []
         self._dimensions = []
         self._fillGapsWithPreviousResult = False
+        self._waitSecondsBeforeCumulating = 3
         self._onSourceRow = None
         self._onBatchCurrent = None
         self._onRedoPastRows = None
         self._onJumpBack = None
+        self._onDtInsert = None
+        self._onDtUpdate = None
 
     @property
     def Name(self):
@@ -114,12 +117,26 @@ class DimTabConfig(object):
     @property
     def FillGapsWithPreviousResult(self):
         return self._fillGapsWithPreviousResult
+
     @FillGapsWithPreviousResult.setter
     def FillGapsWithPreviousResult(self, value):
         if type(value) is bool:
             self._fillGapsWithPreviousResult = value
         else:
-            raise Exception("Value must be a bool. True fills empty time_sec/groups with results from previous time_sec")
+            raise Exception(
+                "Value must be a bool. True fills empty time_sec/groups with results from previous time_sec")
+
+    @property
+    def WaitSecondsBeforeCumulating(self):
+        return self._waitSecondsBeforeCumulating
+
+    @WaitSecondsBeforeCumulating.setter
+    def WaitSecondsBeforeCumulating(self, value):
+        if type(value) is int:
+            self._waitSecondsBeforeCumulating = value
+        else:
+            raise Exception(
+                "Value must be a bool. True fills empty time_sec/groups with results from previous time_sec")
 
     # we allow a single callback function whenever we start working on a source row
     @property
@@ -142,6 +159,20 @@ class DimTabConfig(object):
     @OnJumpBack.setter
     def OnJumpBack(self, callback):
         self._onJumpBack = self._validCallback(callback, 1, "<DimTabWorker instance>")
+
+    @property
+    def OnDtInsert(self):
+        return self._onDtInsert
+    @OnDtInsert.setter
+    def OnDtInsert(self, callback):
+        self._onDtInsert = self._validCallback(callback, 1, "<Cumulator instance>")
+
+    @property
+    def OnDtUpdate(self):
+        return self._onDtUpdate
+    @OnDtUpdate.setter
+    def OnDtUpdate(self, callback):
+        self._onDtUpdate = self._validCallback(callback, 1, "<Cumulator instance>")
 
     def _validCallback(self, callback, argCount, argumentHelpText):
         if callback.func_code.co_argcount != 1:

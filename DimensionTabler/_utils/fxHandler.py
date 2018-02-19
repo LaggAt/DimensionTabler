@@ -5,8 +5,9 @@
 
 import fx
 
-def AggregateGroupResults(sourceRowLst):
+def AggregateGroupResults(group):
     groupResults = {}
+    sourceRowLst = group.values()
     if len(sourceRowLst):
         # timeSec & Grouping
         for f in sourceRowLst[0].Fx:
@@ -21,5 +22,5 @@ def AggregateGroupResults(sourceRowLst):
             # for vars persist most current value
             groupResults[v[1:]] = fx.last(valueLst)
     else:
-        pass  # group is empty
+        return None
     return groupResults

@@ -70,16 +70,26 @@ def getDTTickerConfig():
                             DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
     ]
 
-    # Options: Fill Gaps
+    #Options: Fill Gaps
     # We create a dimension table line for each time_sec and group_*, by default if data is missing we ignore that.
     # with this setting on we fill these gaps with the previous result.
     config.FillGapsWithPreviousResult = True
+
+    #Options: Wait before cumulating rows
+    # In each cumulator run we summarize over all Groups of TimeSec-Blocks and Groupings where a source row was added.
+    # A lower number means: we do that more often, therefore deliver faster, use more CPU and less RAM.
+    # A higher number means: you have to wait for new source lines longer to be considered, therefore you have less
+    # cpu usage, less I/O and more RAM usage. Default is 3 Seconds, which should be fine for most cases I think of.
+    #for demo we use one second here, so you see more data updating.
+    config.WaitSecondsBeforeCumulating = 1
 
     # keep us informed, pass a callback function. lambda isn't needed, we just wrap it up in a small class instance.
     callbackHandler = CallbackHandler()
     config.OnSourceRow = lambda worker: callbackHandler.InfoCallback(worker)
     config.OnBatchCurrent = lambda worker: callbackHandler.BatchIsCurrent(worker)
     config.OnJumpBack = lambda worker: callbackHandler.JumpBack(worker)
+    config.OnDtInsert = lambda cumulator: callbackHandler.DtInsert(cumulator)
+    config.OnDtUpdate = lambda cumulator: callbackHandler.DtUpdate(cumulator)
     return config
 
 # callback examples:
@@ -87,17 +97,30 @@ class CallbackHandler(object):
     def __init__(self):
         super(CallbackHandler, self).__init__()
         self.cntSourceRows = 0
+        self.cntInserted = 0
+        self.cntUpdated = 0
 
     def InfoCallback(self, worker):
         self.cntSourceRows += 1
-        # only output every 100's row:
+        # only output every 10th/100's row:
         if self.cntSourceRows % 10 == 0:
             print ".",
             if self.cntSourceRows % 100 == 0:
                 print "Worker %s working on: %s" % (worker.Config.Name, worker.CurrentSourceRow)
 
     def BatchIsCurrent(self, worker):
-        print("Batch %s is current, worked on %s rows." % (worker._config.Name, self.cntSourceRows))
+        print("Batch %s is current, worked on %s rows. Dimension table rows inserted: %s, updated: %s." % (
+            worker._config.Name, self.cntSourceRows, self.cntInserted, self.cntUpdated))
+
+    def DtInsert(self, cumulator):
+        self.cntInserted += 1
+        if self.cntInserted % 10 == 0:
+            print "i",
+
+    def DtUpdate(self, cumulator):
+        self.cntUpdated += 1
+        if self.cntUpdated % 10 == 0:
+            print "u",
 
     def JumpBack(self, worker):
         nextDimText = "-"
@@ -117,6 +140,7 @@ if __name__ == "__main__":
     # get a instance of our runner
     runner = DimTab(allConfigs)
 
-    # Dimension Tabler runs in a loop by default. Once it is finished, it will watch for new data every 10 seconds.
+    # Dimension Tabler runs in a loop by default. Once it is finished, it will watch for new data every 1 seconds.
     # if you want to use another main loop just call runner._iteration() from it. Beware this could take a long time.
-    runner.MainLoop()
+    # Updating every second is not necessary, if you're ok with waiting some seconds for new source rows. So we use 15s.
+    runner.MainLoop(seconds=15)

@@ -4,6 +4,7 @@
 # Under Terms of GPL v3
 
 from DimensionTabler._vo.DimensionTableRow import DimensionTableRow
+from DimensionTabler._vo.GroupedRows import GroupedRows
 from DimensionTabler._utils import fxHandler
 
 class SchemaUpdater(object):
@@ -19,7 +20,12 @@ class SchemaUpdater(object):
 
         # get needed schema from data row
         #CumulateBlock
-        outputExampeRow = fxHandler.AggregateGroupResults([sRow])
+        dummyGroupingSchema = GroupedRows()
+        dummyGroupingSchema\
+            .AddOrGetTS(0)\
+            .AddOrGetG('')\
+            .AddRow(sRow)
+        outputExampeRow = fxHandler.AggregateGroupResults(dummyGroupingSchema[0][''])
 
         # get some more details
         columnMetadataSource = {}
