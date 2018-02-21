@@ -7,7 +7,9 @@ from Cumulator import Cumulator
 from DimensionTabler._utils import datetimeUtil
 from DimensionTabler._utils.callbackHandler import _callback
 from DimensionTabler._vo.SourceRow import SourceRow
+from DimensionTabler._vo.Dimensions import Dimensions
 from _libs.SchemaUpdater import SchemaUpdater
+from _vo.JumpBackEvArgs import JumpBackEvArgs
 
 
 class DimTabWorker(object):
@@ -16,15 +18,22 @@ class DimTabWorker(object):
         self._config = config
         self._currentSourceRow = None
         self._isSchemaOK = False
-        self._CurrentTimeSec = 0
-        self._cumulator = Cumulator(self._setGetCurrentTimeSec(), self._config)
+        self._jumpBackBeforeSec = 0
+        self._currentTimeSec = 0
+        self._dimensions = Dimensions(self._config.Dimensions, self._cbJumpbackNeeded)
+        self._cumulator = Cumulator(self)
+
+    @property
+    def Dimensions(self):
+        return self._dimensions
 
     @property
     def CurrentTimeSec(self):
-        return self._CurrentTimeSec
+        return self._currentTimeSec
     def _setGetCurrentTimeSec(self):
-        self._CurrentTimeSec = datetimeUtil.getUtcNowSeconds()
-        return self._CurrentTimeSec
+        self._currentTimeSec = datetimeUtil.getUtcNowSeconds()
+        self._dimensions.UpdateDimensions(self._currentTimeSec)
+        return self._currentTimeSec
 
     def _prepareSqlLst(self):
         sqlLst = []
@@ -44,7 +53,7 @@ class DimTabWorker(object):
         for row in rows:
             sRow = SourceRow(nameLst, row)
             if not self._isSchemaOK:
-                SchemaUpdater(self._config, cur, sRow)
+                SchemaUpdater(self, cur, sRow)
                 self._isSchemaOK = True
             yield sRow
 
@@ -65,19 +74,31 @@ class DimTabWorker(object):
     def Cumulator(self):
         return self._cumulator
 
+    def _cbJumpbackNeeded(self, timeSec):
+        # we need to work on older data to match dimension table again
+        self._jumpBackBeforeSec = timeSec
+
     def Work(self):
+        #TODO: is this right? dont we need the time from the data rows for jumpback handling?
         self._setGetCurrentTimeSec()
         # run most current batch (beginning with last run time max)
-        if self._cumulator.CurrentTimeSec > self.CurrentTimeSec:
-            self._setOldStartPoint(self.CurrentTimeSec)
         self._workBatch()
-        # re-work if old dimension table entries must update
-        fromTimeSec = self._cumulator.FirstTimeOfShiftedDimension(self.CurrentTimeSec)
-        if fromTimeSec:
-            #TODO: find dimension table row earlier fromTimeSec, create/update/delete all rows from that
-            self._setOldStartPoint(fromTimeSec)
-            _callback(self, self._config.OnJumpBack)
-            self._workBatch()
+
+        # jump back if Dimensions tell us to do so, OR if we get data from the future
+        now = datetimeUtil.getUtcNowSeconds()
+        if self._jumpBackBeforeSec or self.CurrentTimeSec > now:
+            if not self._jumpBackBeforeSec:
+                # this is the case we got data from future, step back to current
+                self._jumpBackBeforeSec = now
+            if self.CurrentTimeSec > self._jumpBackBeforeSec:
+                #find dimension table row earlier fromTimeSec, create/update/delete all rows from that
+                sRowStartPoint = self._setOldStartPoint(self._jumpBackBeforeSec)
+                _callback(self, self._config.OnJumpBack,
+                    JumpBackEvArgs(sRowStartPoint, self._jumpBackBeforeSec, self.CurrentTimeSec))
+                # reset jump back time
+                self._jumpBackBeforeSec = 0
+                # we are probably up-to-date, to save time, start immediatly:
+                self._workBatch()
 
     def _setOldStartPoint(self, beforeTimeSec):
         db = self._config.Db
@@ -91,6 +112,7 @@ class DimTabWorker(object):
                 nameLst = [x[0] for x in cur.description]
                 sRow = SourceRow(nameLst, row)
         self._updateVars(sRow)
+        return sRow
 
     def _workBatch(self):
         batchHasData = True

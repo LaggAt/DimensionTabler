@@ -53,8 +53,9 @@ DROP PROCEDURE generate_demo_data;
 CREATE TABLE `dt_ticker` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time_sec` int(11) NOT NULL,
-  `time_sec_insert` INT(11) NOT NULL DEFAULT 0,
+  `time_sec_insert` INT(11) NOT NULL,
   `time_sec_update` INT(11) NOT NULL DEFAULT 0,
+  `grp_hash` VARCHAR(64) NOT NULL,
   `group_currency` varchar(45) NOT NULL,
   `wallet_id_first` int(11) NOT NULL,
   `wallet_id_last` int(11) NOT NULL,

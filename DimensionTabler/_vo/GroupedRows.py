@@ -7,20 +7,22 @@ from MyIterBase import MyIterBase
 
 
 class GroupedRows(MyIterBase):
-    def __init__(self):
+    def __init__(self, worker):
         self._timeSecGroups = {}
         super(GroupedRows, self).__init__(self._timeSecGroups)
+        self._worker = worker
 
-    def AddOrGetTS(self, timeSec):
-        ts = self.GetTS(timeSec)
+
+    def AddOrGetTS(self, dim, timeSecStart, timeSecEnd):
+        ts = self.GetTS(timeSecStart)
         if not ts:
-            ts = TimeSecGroup(timeSec, self)
-            self._timeSecGroups[timeSec] = ts
+            ts = TimeSecGroup(dim, timeSecStart, timeSecEnd, self)
+            self._timeSecGroups[timeSecStart] = ts
         return ts
 
-    def GetTS(self, timeSec):
-        if timeSec in self._timeSecGroups:
-            return self._timeSecGroups[timeSec]
+    def GetTS(self, timeSecStart):
+        if timeSecStart in self:
+            return self[timeSecStart]
         return None
 
     def GetTSBefore(self, timeSec):
@@ -42,7 +44,7 @@ class GroupedRows(MyIterBase):
         keepBeforeDirty = 3
         keyStack = []
         for obj in self:
-            keyStack.append(obj.TimeSec)
+            keyStack.append(obj.TimeSecStart)
             if obj.Dirty:
                 break
         # we reached end of list, or first dirty item
@@ -51,16 +53,36 @@ class GroupedRows(MyIterBase):
             self._timeSecGroups.pop(k)
 
 class TimeSecGroup(MyIterBase):
-    def __init__(self, timeSec, groupedRowsObj):
+    def __init__(self, dim, timeSecStart, timeSecEnd, groupedRowsObj):
         self._groupings = {}
         super(TimeSecGroup, self).__init__(self._groupings)
-        self._timeSec = timeSec
+        self._dim = dim
+        self._timeSecStart = timeSecStart
+        self._timeSecEnd = timeSecEnd
         self._groupedRowsObj = groupedRowsObj
         self._dirty = True
 
     @property
-    def TimeSec(self):
-        return self._timeSec
+    def TimeSecStart(self):
+        return self._timeSecStart
+
+    @property
+    def TimeSecEnd(self):
+        return self._timeSecEnd
+
+    @property
+    def TotalSeconds(self):
+        return self.TimeSecEnd - self.TimeSecStart
+
+    @property
+    def Dimension(self):
+        return self._dim
+
+    #@property
+    #def TimeSecEnd(self):
+    #    #TODO: watch for overlapping dimensions!
+    #    end = self._timeSec + where_length?
+    #    return end
 
     @property
     def Dirty(self):

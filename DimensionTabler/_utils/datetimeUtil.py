@@ -11,4 +11,5 @@ def getUtcNowSeconds():
 def getSecondsFromDateTime(dt):
     return int((dt - datetime(1970, 1, 1)).total_seconds())
 
-
+def getDateTimeFromSeconds(utcSeconds):
+    return datetime.utcfromtimestamp(utcSeconds)

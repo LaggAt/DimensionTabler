@@ -6,10 +6,10 @@
 import sys
 import traceback
 
-def _callback(inst, cb):
+def _callback(inst, cb, evArgs = None):
     if cb:
         try:
-            cb(inst)
+            cb(inst, evArgs)
         except Exception as ex:
             print("Ignoring Exception %s in OnSourceRow Callback for SourceRow:\n    %s" % (repr(ex)))
             exc_type, exc_value, exc_traceback = sys.exc_info()

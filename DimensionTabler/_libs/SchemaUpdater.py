@@ -8,7 +8,8 @@ from DimensionTabler._vo.GroupedRows import GroupedRows
 from DimensionTabler._utils import fxHandler
 
 class SchemaUpdater(object):
-    def __init__(self, config, cursor, sRow):
+    def __init__(self, worker, cursor, sRow):
+        config = worker._config
         super(SchemaUpdater, self).__init__()
         db = config.Db
 
@@ -19,10 +20,10 @@ class SchemaUpdater(object):
             columnMetadataDimTable = self._descriptionToMetadata(cur.description)
 
         # get needed schema from data row
-        #CumulateBlock
-        dummyGroupingSchema = GroupedRows()
+        #CumulateBlock - pass no worker as we do not want to alter it
+        dummyGroupingSchema = GroupedRows(None)
         dummyGroupingSchema\
-            .AddOrGetTS(0)\
+            .AddOrGetTS(None, 0, 0)\
             .AddOrGetG('')\
             .AddRow(sRow)
         outputExampeRow = fxHandler.AggregateGroupResults(dummyGroupingSchema[0][''])

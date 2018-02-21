@@ -23,6 +23,7 @@ class DimTabConfig(object):
         self._onJumpBack = None
         self._onDtInsert = None
         self._onDtUpdate = None
+        self._onDtDelete = None
 
     @property
     def Name(self):
@@ -92,6 +93,9 @@ class DimTabConfig(object):
             if (not type(timeSec) is int) and (not timeSec == DimTabConfig.DIMENSION_TIMESEC_PAST):
                 raise Exception("timeSec must be number of seconds or a DIMENSION_TIMESEC_* constant.")
             self._timeSec = timeSec
+            self._isPast = False
+            if timeSec == DimTabConfig.DIMENSION_TIMESEC_PAST:
+                self._isPast = True
             if not type(granularitySec) is int:
                 raise Exception("granularitySec needs to be the wanted granularity in seconds.")
             self._granularitySec = granularitySec #dont div/0
@@ -101,6 +105,9 @@ class DimTabConfig(object):
         @property
         def TimeSec(self):
             return self._timeSec
+        @property
+        def IsPast(self):
+            return self._isPast
         @property
         def GranularitySec(self):
             return self._granularitySec
@@ -144,37 +151,44 @@ class DimTabConfig(object):
         return self._onSourceRow
     @OnSourceRow.setter
     def OnSourceRow(self, callback):
-        self._onSourceRow = self._validCallback(callback, 1, "<DimTabWorker instance>")
+        self._onSourceRow = self._validCallback(callback, 2, "<DimTabWorker instance>, <evArgs>")
 
     @property
     def OnBatchCurrent(self):
         return self._onBatchCurrent
     @OnBatchCurrent.setter
     def OnBatchCurrent(self, callback):
-        self._onBatchCurrent = self._validCallback(callback, 1, "<DimTabWorker instance>")
+        self._onBatchCurrent = self._validCallback(callback, 2, "<DimTabWorker instance>, <evArgs>")
 
     @property
     def OnJumpBack(self):
         return self._onJumpBack
     @OnJumpBack.setter
     def OnJumpBack(self, callback):
-        self._onJumpBack = self._validCallback(callback, 1, "<DimTabWorker instance>")
+        self._onJumpBack = self._validCallback(callback, 2, "<DimTabWorker instance>, <evArgs>")
 
     @property
     def OnDtInsert(self):
         return self._onDtInsert
     @OnDtInsert.setter
     def OnDtInsert(self, callback):
-        self._onDtInsert = self._validCallback(callback, 1, "<Cumulator instance>")
+        self._onDtInsert = self._validCallback(callback, 2, "<Cumulator instance>, <evArgs>")
 
     @property
     def OnDtUpdate(self):
         return self._onDtUpdate
     @OnDtUpdate.setter
     def OnDtUpdate(self, callback):
-        self._onDtUpdate = self._validCallback(callback, 1, "<Cumulator instance>")
+        self._onDtUpdate = self._validCallback(callback, 2, "<Cumulator instance>, <evArgs>")
+
+    @property
+    def OnDtDelete(self):
+        return self._onDtDelete
+    @OnDtDelete.setter
+    def OnDtDelete(self, callback):
+        self._onDtDelete = self._validCallback(callback, 2, "<Cumulator instance>, <evArgs>")
 
     def _validCallback(self, callback, argCount, argumentHelpText):
-        if callback.func_code.co_argcount != 1:
+        if callback.func_code.co_argcount != argCount:
             raise Exception("Wrong parameter count. Syntax: %s(%s)" % (callback.func_code.co_name, argumentHelpText))
         return callback

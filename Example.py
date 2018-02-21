@@ -59,15 +59,14 @@ def getDTTickerConfig():
         DimTabConfig.DimensionConfig("  future",              0,        0),  # every value from future if any
         DimTabConfig.DimensionConfig("last  1h",         -60*60,        0),  # every value for last hour
         DimTabConfig.DimensionConfig("last  3h",       -3*60*60,       60),  # every minute a value for last 3 hours
-        DimTabConfig.DimensionConfig("last  5h",       -5*60*60,     3*60),  # every value for last hour
-        DimTabConfig.DimensionConfig("last 24h",      -24*60*60,     5*60),  # every minute for last day
+        DimTabConfig.DimensionConfig("last  6h",       -6*60*60,     5*60),  # every 5 minutes for last 6 hours
         DimTabConfig.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
-        DimTabConfig.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour
-        DimTabConfig.DimensionConfig("last 90d",   -90*24*60*60,  6*60*60),  # every 6 hours
-        DimTabConfig.DimensionConfig("one year",  -361*24*60*60, 12*60*60),  # every 12 hours
-        DimTabConfig.DimensionConfig("15' year",  -368*24*60*60,    15*60),  # get 7 days in 15' resolution again!
+        DimTabConfig.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour this month
+        DimTabConfig.DimensionConfig("last 90d",   -90*24*60*60,  6*60*60),  # every 6 hours last 90 days
+        DimTabConfig.DimensionConfig("one year",  -361*24*60*60, 12*60*60),  # every 12 hours for a year
+        DimTabConfig.DimensionConfig("15' year",  -368*24*60*60,    15*60),  # get 7 days in 15' resolution at about 1 year
         DimTabConfig.DimensionConfig("  before",
-                            DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day
+                            DimTabConfig.DIMENSION_TIMESEC_PAST, 24*60*60),  # every day for all longer than 1y
     ]
 
     #Options: Fill Gaps
@@ -85,20 +84,26 @@ def getDTTickerConfig():
 
     # keep us informed, pass a callback function. lambda isn't needed, we just wrap it up in a small class instance.
     callbackHandler = CallbackHandler()
-    config.OnSourceRow = lambda worker: callbackHandler.InfoCallback(worker)
-    config.OnBatchCurrent = lambda worker: callbackHandler.BatchIsCurrent(worker)
-    config.OnJumpBack = lambda worker: callbackHandler.JumpBack(worker)
-    config.OnDtInsert = lambda cumulator: callbackHandler.DtInsert(cumulator)
-    config.OnDtUpdate = lambda cumulator: callbackHandler.DtUpdate(cumulator)
+    config.OnSourceRow = lambda worker, evArgs: callbackHandler.InfoCallback(worker)
+    config.OnBatchCurrent = lambda worker, evArgs: callbackHandler.BatchIsCurrent(worker)
+    config.OnJumpBack = lambda worker, evArgs: callbackHandler.JumpBack(worker, evArgs)
+    config.OnDtInsert = lambda worker, evArgs: callbackHandler.DtInsert(worker)
+    config.OnDtUpdate = lambda worker, evArgs: callbackHandler.DtUpdate(worker)
+    config.OnDtDelete = lambda worker, evArgs: callbackHandler.DtDelete(worker, evArgs)
     return config
 
 # callback examples:
+from DimensionTabler._libs.DimTabWorker import DimTabWorker
+from DimensionTabler._vo.DtDeleteEvArgs import DtDeleteEvArgs
+from DimensionTabler._vo.JumpBackEvArgs import JumpBackEvArgs
+from DimensionTabler._utils.datetimeUtil import *
 class CallbackHandler(object):
     def __init__(self):
         super(CallbackHandler, self).__init__()
         self.cntSourceRows = 0
         self.cntInserted = 0
         self.cntUpdated = 0
+        self.cntDelete = 0
 
     def InfoCallback(self, worker):
         self.cntSourceRows += 1
@@ -109,26 +114,39 @@ class CallbackHandler(object):
                 print "Worker %s working on: %s" % (worker.Config.Name, worker.CurrentSourceRow)
 
     def BatchIsCurrent(self, worker):
-        print("Batch %s is current, worked on %s rows. Dimension table rows inserted: %s, updated: %s." % (
-            worker._config.Name, self.cntSourceRows, self.cntInserted, self.cntUpdated))
+        print("Batch %s is current, worked on %s rows. Dimension table rows inserted: %s, updated: %s, delete: %s." % (
+            worker._config.Name, self.cntSourceRows, self.cntInserted, self.cntUpdated, self.cntDelete))
 
-    def DtInsert(self, cumulator):
+    def DtInsert(self, worker):
         self.cntInserted += 1
         if self.cntInserted % 10 == 0:
             print "i",
 
-    def DtUpdate(self, cumulator):
+    def DtUpdate(self, worker):
         self.cntUpdated += 1
         if self.cntUpdated % 10 == 0:
             print "u",
 
-    def JumpBack(self, worker):
-        nextDimText = "-"
-        dim = worker.Cumulator.NextDimension
-        if dim:
-            nextDimText = dim.Description
-        print("Old dimensions are outdated, jumping back before dimension %s time_sec %s" % (
-            nextDimText, worker.Cumulator.CurrentTimeSec,))
+    def DtDelete(self, worker, evArgs):
+        """
+        give PyCharm some hints of datatypes for AutoComplete.
+        :type worker: DimTabWorker
+        :type evArgs: DtDeleteEvArgs
+        """
+        tensBefore = self.cntDelete // 10
+        self.cntDelete += evArgs.Count
+        tensAfter = self.cntDelete // 10
+        for i in range(tensBefore, tensAfter):
+            print "d",
+
+    def JumpBack(self, worker, jumpBackEvArgs):
+        """
+        :type worker: DimTabWorker
+        :type jumpBackEvArgs: JumpBackEvArgs
+        """
+        print("Jumping back from %s to %s." % (
+            getDateTimeFromSeconds(jumpBackEvArgs.WasOnSec),
+            getDateTimeFromSeconds(jumpBackEvArgs.JumpBackBeforeSec)))
 
 if __name__ == "__main__":
     # you probably want more than one dimension table, so we use a list here
