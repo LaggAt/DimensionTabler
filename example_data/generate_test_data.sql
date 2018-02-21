@@ -46,6 +46,7 @@ CALL generate_demo_data(4);
 CALL generate_demo_data(3);
 CALL generate_demo_data(2);
 CALL generate_demo_data(1);
+CALL generate_demo_data(0);
 
 DROP PROCEDURE generate_demo_data;
 

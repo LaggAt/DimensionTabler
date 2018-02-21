@@ -12,8 +12,7 @@ from DimensionTabler._vo.DimensionTableRow import DimensionTableRow
 from DimensionTabler._vo.GroupedRows import GroupedRows
 from _utils import datetimeUtil
 from DimensionTabler._utils.callbackHandler import _callback
-from _vo.DtDeleteEvArgs import DtDeleteEvArgs
-
+from DimensionTabler.DimTabEvArgs import *
 
 class Cumulator(object):
     def __init__(self, worker):
@@ -22,96 +21,16 @@ class Cumulator(object):
         #self._dimTableBlock = {}
         self._worker = worker
         self._config = worker._config
-        self._currentRow = None
-        self._currentTimeSec = 0
         self._lastCumulationSec = datetimeUtil.getUtcNowSeconds()
-        #self._lastUpdateSeconds = timeSecSnapshot
-        #TODO: remove dimensions things !!!!!
-        #self._createDimensions(timeSecSnapshot, worker._config.Dimensions)
-
-    @property
-    def CurrentRow(self):
-        return self._currentRow
-    @property
-    def CurrentTimeSec(self):
-        return self._currentTimeSec
-
-    @property
-    def CurrentDimension(self):
-        dim = self._dimensionPast
-        for key in sorted(self._dimensionStartingTimeSec):
-            if key <= self.CurrentTimeSec:
-                dim = self._dimensionStartingTimeSec[key]
-                break
-        if not dim:
-            return ""
-        return dim
-
-    @property
-    def NextDimension(self):
-        dim = self._dimensionPast
-        for key in sorted(self._dimensionStartingTimeSec):
-            if key > self.CurrentTimeSec:
-                dim = self._dimensionStartingTimeSec[key]
-                break
-        if not dim:
-            return ""
-        return dim
-
-    #def _createDimensions(self, timeSecSnapshot, dimensions):
-    #    self._dimensionPast = one(
-    #        [dim for dim in dimensions if dim.TimeSec == DimTabConfig.DIMENSION_TIMESEC_PAST])
-    #    self._dimensionStartingTimeSec = {}
-    #    dimensionsOrdered = sorted(
-    #        [dim for dim in dimensions if dim.TimeSec <> DimTabConfig.DIMENSION_TIMESEC_PAST],
-    #        key = lambda dim: dim.TimeSec)
-    #    for dim in dimensionsOrdered:
-    #        # we want the same ranges within a timebox, so get start of timebox:
-    #        start = self._getDimStartSec(timeSecSnapshot, dim)
-    #        self._dimensionStartingTimeSec[start] = dim
-
-    #""" shifts dimensions to new start times,
-    #    and if it shifted a dimension returns the old start time (if more than one, the first) """
-    #def FirstTimeOfShiftedDimension(self, timeSecSnapshot):
-    #    firstTimeSec = None
-    #    newDimensionStartingTimeSec = {}
-    #    dim = self._dimensionPast
-    #    for oldSec in sorted((self._dimensionStartingTimeSec).keys()):
-    #        oldDim = dim
-    #        dim = self._dimensionStartingTimeSec[oldSec]
-    #        newSec = self._getDimStartSec(timeSecSnapshot, dim)
-    #        newDimensionStartingTimeSec[newSec] = dim
-    #        # start granularity of previous dimension earlier (or current granularity if in this curious case we have worse resolution in newer data)
-    #        singleGranularity = max(oldDim.GranularitySec, dim.GranularitySec)
-    #        startBeforeTimeSec = oldSec
-    #        if singleGranularity:
-    #            startBeforeTimeSec = (startBeforeTimeSec // singleGranularity) * singleGranularity
-    #        # did we move forward with this time box?
-    #        if oldSec < newSec:
-    #            # there is no earlier time box we will work on
-    #            if firstTimeSec is None:
-    #                # are we already working that early
-    #                if startBeforeTimeSec < self._currentTimeSec:
-    #                    self._currentTimeSec = firstTimeSec = startBeforeTimeSec
-    #    if firstTimeSec:
-    #        self._dimensionStartingTimeSec = newDimensionStartingTimeSec
-    #    return firstTimeSec
 
     def AddRow(self, row):
-        # make them available for callbacks
-        self._currentTimeSec = row.TimeSec
-        self._currentRow = row
         # get the dimension this row is in
         dim, timeSecStart, timeSecEnd = \
             self._worker.Dimensions.GetDimensionAndTimeSecSlotStartAndEndForTimeSec(row.TimeSec)
-        # we are in dimension dim, determine group time_sec this row is in
-        #timeSecGroup = row.TimeSec
-        #if dim.GranularitySec:
-        #    timeSecGroup = (timeSecGroup // dim.GranularitySec) * dim.GranularitySec
-        # create structure self._groupedRows[timeSecGroup]['groups']['hash'][row,row,...]
-        self._addTSGroup(dim, timeSecStart, timeSecEnd)\
-            .AddOrGetG(row.GroupHash)\
-            .AddRow(row)
+        # create structure self._groupedRows...
+        tempTsG = self._addTSGroup(dim, timeSecStart, timeSecEnd)
+        tempG =   tempTsG.AddOrGetG(row.GroupHash)
+        tempRow = tempG.AddRow(row)
         #cumulate
         self.DoCumulate()
 
@@ -135,11 +54,6 @@ class Cumulator(object):
         # is there an earlier time_sec?
         tsBefore = self._groupedRows.GetTSBefore(timeSecStart)
         if tsBefore:
-            ## get earlier dimension group
-            #earlierTimeSec = timeSecGroup - 1
-            #earlierDim, earlierTimeSecDim = self._getDimensionAndTimeSecForTimeSec(earlierTimeSec)
-            #if earlierDim.GranularitySec:
-            #    earlierTimeSec = (earlierTimeSec // earlierDim.GranularitySec) * earlierDim.GranularitySec
             # create that earlier group (and all earliers to the next existing
             earlierTS = self._addTSGroup(tsBefore, tsBefore.TimeSecStart, tsBefore.TimeSecEnd)
             # add groups (hashes) for earlier groups, needed for deletion of old lines or generation of missing data
@@ -203,6 +117,7 @@ class Cumulator(object):
 
         # update or insert?
         #TODO per config: linking to source rows
+        id = 0
         sql = "SELECT id" + \
             " FROM " + self._config.Name + \
             " WHERE time_sec = %s and grp_hash = %s;"
@@ -210,6 +125,10 @@ class Cumulator(object):
         with db as cur:
             cur.execute(sql, params)
             dbRow = cur.fetchone()
+            isUpdate = False
+            if dbRow:
+                id = dbRow[0] # from select
+                isUpdate = True
         # try update
         if dbRow:
             sql = "UPDATE " + self._config.Name + \
@@ -219,7 +138,10 @@ class Cumulator(object):
             params = dimT.FieldsValues + \
                      [block.GroupHash, datetimeUtil.getUtcNowSeconds()] + \
                      [block.TimeSecObj.TimeSecStart, block.GroupHash]
-            _callback(self._worker, self._config.OnDtUpdate)
+            with db as cur:
+                cur.execute(sql, params)
+            _callback(self._worker, self._config.OnDtUpdate,
+                DtUpdateEvArgs(block, id, sql, params))
         else:
             #insert
             sql = "INSERT " + self._config.Name + " (" + ", ".join(dimT.Fields + dimT.Groups) + \
@@ -228,6 +150,13 @@ class Cumulator(object):
                   "    , %s, %s);"
             params = dimT.FieldsValues + dimT.GroupsValues + \
                      [block.GroupHash, datetimeUtil.getUtcNowSeconds()]
-            _callback(self._worker, self._config.OnDtInsert)
-        with db as cur:
-            cur.execute(sql, params)
+            with db as cur:
+                cur.execute(sql, params)
+                if id == 0:
+                    id = cur.lastrowid # get id from insert
+            _callback(self._worker, self._config.OnDtInsert,
+                DtInsertEvArgs(block, id, sql, params))
+
+
+        #TODO: link dim table row "id" to the source rows "block.Rows"
+        pass

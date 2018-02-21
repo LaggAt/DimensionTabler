@@ -17,6 +17,7 @@ class DimTabConfig(object):
         self._dimensions = []
         self._fillGapsWithPreviousResult = False
         self._waitSecondsBeforeCumulating = 3
+        self._onGetData = None
         self._onSourceRow = None
         self._onBatchCurrent = None
         self._onRedoPastRows = None
@@ -145,10 +146,18 @@ class DimTabConfig(object):
             raise Exception(
                 "Value must be a bool. True fills empty time_sec/groups with results from previous time_sec")
 
-    # we allow a single callback function whenever we start working on a source row
+    @property
+    def OnGetData(self):
+        return self._onGetData
+
+    @OnGetData.setter
+    def OnGetData(self, callback):
+        self._onGetData = self._validCallback(callback, 2, "<DimTabWorker instance>, <GetDataEvArgs>")
+
     @property
     def OnSourceRow(self):
         return self._onSourceRow
+
     @OnSourceRow.setter
     def OnSourceRow(self, callback):
         self._onSourceRow = self._validCallback(callback, 2, "<DimTabWorker instance>, <evArgs>")

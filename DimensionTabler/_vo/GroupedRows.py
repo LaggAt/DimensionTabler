@@ -21,7 +21,7 @@ class GroupedRows(MyIterBase):
         return ts
 
     def GetTS(self, timeSecStart):
-        if timeSecStart in self:
+        if timeSecStart in self.keys():
             return self[timeSecStart]
         return None
 
@@ -31,6 +31,7 @@ class GroupedRows(MyIterBase):
             return self[max(keysSmaller)]
         return None
 
+    # GroupedRows: TimeSecGroup dirty blocks
     def GetDirtyBlocks(self, clearDirty = False):
         for tsGroup in self:
             if tsGroup.Dirty:
@@ -78,12 +79,6 @@ class TimeSecGroup(MyIterBase):
     def Dimension(self):
         return self._dim
 
-    #@property
-    #def TimeSecEnd(self):
-    #    #TODO: watch for overlapping dimensions!
-    #    end = self._timeSec + where_length?
-    #    return end
-
     @property
     def Dirty(self):
         return self._dirty
@@ -103,10 +98,11 @@ class TimeSecGroup(MyIterBase):
         return g
 
     def GetG(self, groupHash):
-        if groupHash in self._groupings:
+        if groupHash in self.keys():
             return self._groupings[groupHash]
         return None
 
+    # TimeSecGroup: GroupingGroup dirty blocks
     def GetDirtyBlocks(self, clearDirty = False):
         for gGroup in self:
             if gGroup.Dirty:
@@ -147,11 +143,17 @@ class GroupingGroup(MyIterBase):
         self._dirty = True
         self._timeSecObj._setDirty()
 
+    @property
+    def Rows(self):
+        return self._rows
+
     def AddRow(self, sRow):
-        #TODO: possibly update a row if values changed, for now we ignore dupes
         if sRow.Id in self._rows:
-            pass
+            # source row changed, update it
+            if self._rows[sRow.Id] != sRow:
+                self._rows[sRow.Id] = sRow
+                self._setDirty()
         else:
             self._rows[sRow.Id] = sRow
             self._setDirty()
-
+        return sRow

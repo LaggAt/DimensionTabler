@@ -4,6 +4,8 @@
 # Under Terms of GPL v3
 
 from DimensionTabler import *
+from DimensionTabler.DimTabEvArgs import *
+from DimensionTabler._utils.datetimeUtil import *
 
 # DB-Api connection
 import MySQLdb as mdb
@@ -56,7 +58,7 @@ def getDTTickerConfig():
     #       for each source data line which time_sec is between 1 day ago (2nd line: -24*60*60) and 7 days ago.
     #       Got it?
     config.Dimensions = [
-        DimTabConfig.DimensionConfig("  future",              0,        0),  # every value from future if any
+        #DimTabConfig.DimensionConfig("  future",              0,        0),  # every value from future if any
         DimTabConfig.DimensionConfig("last  1h",         -60*60,        0),  # every value for last hour
         DimTabConfig.DimensionConfig("last  3h",       -3*60*60,       60),  # every minute a value for last 3 hours
         DimTabConfig.DimensionConfig("last  6h",       -6*60*60,     5*60),  # every 5 minutes for last 6 hours
@@ -84,8 +86,9 @@ def getDTTickerConfig():
 
     # keep us informed, pass a callback function. lambda isn't needed, we just wrap it up in a small class instance.
     callbackHandler = CallbackHandler()
-    config.OnSourceRow = lambda worker, evArgs: callbackHandler.InfoCallback(worker)
-    config.OnBatchCurrent = lambda worker, evArgs: callbackHandler.BatchIsCurrent(worker)
+    config.OnGetData = lambda worker, evArgs: callbackHandler.GetData(worker, evArgs)
+    #config.OnSourceRow = lambda worker, evArgs: callbackHandler.InfoCallback(worker)
+    #config.OnBatchCurrent = lambda worker, evArgs: callbackHandler.BatchIsCurrent(worker)
     config.OnJumpBack = lambda worker, evArgs: callbackHandler.JumpBack(worker, evArgs)
     config.OnDtInsert = lambda worker, evArgs: callbackHandler.DtInsert(worker)
     config.OnDtUpdate = lambda worker, evArgs: callbackHandler.DtUpdate(worker)
@@ -93,10 +96,6 @@ def getDTTickerConfig():
     return config
 
 # callback examples:
-from DimensionTabler._libs.DimTabWorker import DimTabWorker
-from DimensionTabler._vo.DtDeleteEvArgs import DtDeleteEvArgs
-from DimensionTabler._vo.JumpBackEvArgs import JumpBackEvArgs
-from DimensionTabler._utils.datetimeUtil import *
 class CallbackHandler(object):
     def __init__(self):
         super(CallbackHandler, self).__init__()
@@ -104,6 +103,9 @@ class CallbackHandler(object):
         self.cntInserted = 0
         self.cntUpdated = 0
         self.cntDelete = 0
+
+    def GetData(self, worker, getDataEvArgs):
+        print getDataEvArgs.Count,
 
     def InfoCallback(self, worker):
         self.cntSourceRows += 1

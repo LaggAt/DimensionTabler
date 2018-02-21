@@ -12,13 +12,11 @@ class MyIterBase(object):
     def __iter__(self):
         for k in sorted(self._theDict):
             yield self._theDict[k]
-        #raise StopIteration()
 
     # get an iterator of sorted keys
     def keys(self):
         for k in sorted(self._theDict):
             yield k
-        #raise StopIteration()
 
     # get a specific item with instance[index]
     def __getitem__(self, index):
