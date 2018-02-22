@@ -6,6 +6,7 @@
 from DimensionTabler import *
 from DimensionTabler.DimTabEvArgs import *
 from DimensionTabler._utils.datetimeUtil import *
+import decimal
 
 # DB-Api connection
 import MySQLdb as mdb
@@ -15,6 +16,11 @@ db = mdb.connect('localhost', 'dimensiontabler_demo', 'demo4711', 'dimensiontabl
 def getDTTickerConfig():
     # here is the table name
     config = DimTabConfig("dt_ticker")
+
+    #Intermediate table name:
+    # Don't set, if you do not want a linking table between the source rows and the dimension table.
+    # Here we want to see where data is coming from, so:
+    config.IntermediateTable = config.IntermediateTableConfig('ticker__dt_ticker', 'ticker_id', 'dt_ticker_id')
 
     # database connection to use (currently only mysql is tested, should work with any DB-Api compatible db).
     config.Db = db
@@ -45,12 +51,22 @@ def getDTTickerConfig():
         LIMIT 0,500
     """
 
-    # Variables: List of variables used in SQL.
+    #Variables: List of variables used in SQL.
     #   They will be initialized with a initial value. A var_* field updates them on each data row.
     config.VariableConfigLst = [
         # they come with: a name without @, a SQL to initialize them including VALUE, the initial VALUE
         DimTabConfig.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
     ]
+
+    #PostProcessorDict: Dict with field name and post-processing function.
+    # this is a dict with dimension table fields as key, and a function as value.
+    # after using the aggregate function, this function is called. Signature see example fxRound8
+    # These functions should never fail.
+    # you could use fx_forward_* to forward the whole list to the post processing function.
+    # TODO: do an example for fx_forward_*
+    config.PostProcessorDict = {
+        'price_average': fxRound8
+    }
 
     # dimensions config: a human-readable name, a time in past/future in seconds, the granularity
     #   'time in past/future' and 'granularity': for example see the 3rd line:
@@ -58,10 +74,11 @@ def getDTTickerConfig():
     #       for each source data line which time_sec is between 1 day ago (2nd line: -24*60*60) and 7 days ago.
     #       Got it?
     config.Dimensions = [
-        #DimTabConfig.DimensionConfig("  future",              0,        0),  # every value from future if any
+        DimTabConfig.DimensionConfig("  future",              0,        0),  # every value from future if any
         DimTabConfig.DimensionConfig("last  1h",         -60*60,        0),  # every value for last hour
         DimTabConfig.DimensionConfig("last  3h",       -3*60*60,       60),  # every minute a value for last 3 hours
         DimTabConfig.DimensionConfig("last  6h",       -6*60*60,     5*60),  # every 5 minutes for last 6 hours
+        DimTabConfig.DimensionConfig("last 12h",      -12*60*60,    10*60),  # every 5 minutes for last 12 hours
         DimTabConfig.DimensionConfig("last  7d",    -7*24*60*60,    15*60),  # every 15' for 7 days
         DimTabConfig.DimensionConfig("last 30d",   -30*24*60*60,    60*60),  # every hour this month
         DimTabConfig.DimensionConfig("last 90d",   -90*24*60*60,  6*60*60),  # every 6 hours last 90 days
@@ -82,18 +99,24 @@ def getDTTickerConfig():
     # A higher number means: you have to wait for new source lines longer to be considered, therefore you have less
     # cpu usage, less I/O and more RAM usage. Default is 3 Seconds, which should be fine for most cases I think of.
     #for demo we use one second here, so you see more data updating.
-    config.WaitSecondsBeforeCumulating = 1
+    config.WaitSecondsBeforeCumulating = 15
 
     # keep us informed, pass a callback function. lambda isn't needed, we just wrap it up in a small class instance.
     callbackHandler = CallbackHandler()
     config.OnGetData = lambda worker, evArgs: callbackHandler.GetData(worker, evArgs)
     #config.OnSourceRow = lambda worker, evArgs: callbackHandler.InfoCallback(worker)
-    #config.OnBatchCurrent = lambda worker, evArgs: callbackHandler.BatchIsCurrent(worker)
+    config.OnBatchCurrent = lambda worker, evArgs: callbackHandler.BatchIsCurrent(worker)
     config.OnJumpBack = lambda worker, evArgs: callbackHandler.JumpBack(worker, evArgs)
     config.OnDtInsert = lambda worker, evArgs: callbackHandler.DtInsert(worker)
     config.OnDtUpdate = lambda worker, evArgs: callbackHandler.DtUpdate(worker)
     config.OnDtDelete = lambda worker, evArgs: callbackHandler.DtDelete(worker, evArgs)
     return config
+
+def fxRound8(fxHandler, result):
+    try:
+        return result.quantize(decimal.Decimal("0.00000001"), decimal.ROUND_HALF_EVEN)
+    except:
+        return result
 
 # callback examples:
 class CallbackHandler(object):

@@ -72,3 +72,9 @@ CREATE TABLE `dt_ticker` (
   KEY `last_wallet_id_idx` (`wallet_id_last`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `dimensiontabler_demo`.`ticker__dt_ticker` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `ticker_id` INT NOT NULL,
+  `dt_ticker_id` INT NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `ux_ticker_id__dt_ticker_id` (`ticker_id` ASC, `dt_ticker_id` ASC));

@@ -43,3 +43,8 @@ def sum(iter):
 
 def count(iter):
     return len(iter)
+
+def forward(val):
+    """ special function that does nothing. Passes all to the user-defined post-processing functions.
+        use with care. """
+    return val

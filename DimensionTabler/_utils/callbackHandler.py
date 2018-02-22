@@ -11,6 +11,6 @@ def _callback(inst, cb, evArgs = None):
         try:
             cb(inst, evArgs)
         except Exception as ex:
-            print("Ignoring Exception %s in OnSourceRow Callback for SourceRow:\n    %s" % (repr(ex)))
+            print("Ignoring Exception %s in Callback for SourceRow:\n    %s" % (repr(ex)))
             exc_type, exc_value, exc_traceback = sys.exc_info()
             traceback.print_tb(exc_traceback, file=sys.stdout)

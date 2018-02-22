@@ -5,7 +5,7 @@
 
 from DimensionTabler._vo.DimensionTableRow import DimensionTableRow
 from DimensionTabler._vo.GroupedRows import GroupedRows
-from DimensionTabler._utils import fxHandler
+from DimensionTabler._utils.fxHandler import FxHandler
 
 class SchemaUpdater(object):
     def __init__(self, worker, cursor, sRow):
@@ -26,7 +26,7 @@ class SchemaUpdater(object):
             .AddOrGetTS(None, 0, 0)\
             .AddOrGetG('')\
             .AddRow(sRow)
-        outputExampeRow = fxHandler.AggregateGroupResults(dummyGroupingSchema[0][''])
+        outputExampeRow = FxHandler(None).AggregateGroupResults(dummyGroupingSchema[0][''])
 
         # get some more details
         columnMetadataSource = {}

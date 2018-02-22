@@ -11,9 +11,11 @@ class DimTabConfig(object):
         if not tableName:
             raise Exception("Init the config with a name.")
         self._name = tableName
+        self._intermediateTable = None
         self._db = None
         self._sqlMain = ""
         self._variableConfigLst = []
+        self._postProcessorDict = {}
         self._dimensions = []
         self._fillGapsWithPreviousResult = False
         self._waitSecondsBeforeCumulating = 3
@@ -29,6 +31,30 @@ class DimTabConfig(object):
     @property
     def Name(self):
         return self._name
+
+    class IntermediateTableConfig(object):
+        def __init__(self, tableName, sourceID, dimTableID):
+            self._tableName = tableName
+            self._sourceID = sourceID
+            self._dimTableID = dimTableID
+        @property
+        def TableName(self):
+            return self._tableName
+        @property
+        def SourceID(self):
+            return self._sourceID
+        @property
+        def DimTableID(self):
+            return self._dimTableID
+
+    @property
+    def IntermediateTable(self):
+        return self._intermediateTable
+    @IntermediateTable.setter
+    def IntermediateTable(self, value):
+        if not type(value) is DimTabConfig.IntermediateTableConfig and value is not None:
+            raise Exception("Set only if you want a intermediate Table. If, set a IntermediateTableConfig")
+        self._intermediateTable = value
 
     @property
     def Db(self):
@@ -86,6 +112,17 @@ class DimTabConfig(object):
             self._variableConfigLst = value
         else:
             raise Exception("Value must be a list of DimTabConfig.VariableConfig.")
+
+    @property
+    def PostProcessorDict(self):
+        return self._postProcessorDict
+    @PostProcessorDict.setter
+    def PostProcessorDict(self, value):
+        if not type(value) is dict:
+            raise Exception("Pass a dictionary with field names as key.")
+        for key in value:
+            self._postProcessor = self._validCallback(value[key], 2, "<FxHandler_Instance>, <Result from FX>. Check key %s" % (key))
+        self._postProcessorDict = value
 
     DIMENSION_TIMESEC_PAST   = "PAST"
     class DimensionConfig(object):

@@ -39,12 +39,14 @@ class JumpBackEvArgs(object):
 
 
 class DtInsertEvArgs(EvArgsBase):
-    def __init__(self, block, id, sql, params):
+    def __init__(self, block, id, sql, params, interDeleteCnt, interInsertCnt):
         super(DtInsertEvArgs, self).__init__()
         self._block = block
         self._id = id
         self._sql = sql
         self._params = params
+        self._interDeleteCnt = interDeleteCnt
+        self._interInsertCnt = interInsertCnt
 
     @property
     def Block(self):
@@ -62,14 +64,24 @@ class DtInsertEvArgs(EvArgsBase):
     def SqlParams(self):
         return self._params
 
+    @property
+    def InterDeleteCnt(self):
+        return self._interDeleteCnt
+
+    @property
+    def InterInsertCnt(self):
+        return self._interInsertCnt
+
 
 class DtUpdateEvArgs(EvArgsBase):
-    def __init__(self, block, id, sql, params):
+    def __init__(self, block, id, sql, params, interDeleteCnt, interInsertCnt):
         super(DtUpdateEvArgs, self).__init__()
         self._block = block
         self._id = id
         self._sql = sql
         self._params = params
+        self._interDeleteCnt = interDeleteCnt
+        self._interInsertCnt = interInsertCnt
 
     @property
     def Block(self):
@@ -86,6 +98,14 @@ class DtUpdateEvArgs(EvArgsBase):
     @property
     def SqlParams(self):
         return self._params
+
+    @property
+    def InterDeleteCnt(self):
+        return self._interDeleteCnt
+
+    @property
+    def InterInsertCnt(self):
+        return self._interInsertCnt
 
 
 class DtDeleteEvArgs(EvArgsBase):

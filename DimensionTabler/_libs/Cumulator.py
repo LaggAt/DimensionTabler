@@ -6,7 +6,7 @@
 from copy import copy
 from DimensionTabler.DimTabConfig import DimTabConfig
 from more_itertools import one
-from DimensionTabler._utils import fxHandler
+from DimensionTabler._utils.fxHandler import FxHandler
 import urllib
 from DimensionTabler._vo.DimensionTableRow import DimensionTableRow
 from DimensionTabler._vo.GroupedRows import GroupedRows
@@ -68,7 +68,7 @@ class Cumulator(object):
             dirtyBlocks = self._groupedRows.GetDirtyBlocks(clearDirty=True)
             for block in dirtyBlocks:
                 # cumulate block and create dimension table row
-                agregatedSRow = fxHandler.AggregateGroupResults(block)
+                agregatedSRow = FxHandler(self._worker).AggregateGroupResults(block)
                 if agregatedSRow:
                     block.DimTableRow = DimensionTableRow(block.TimeSecObj.TimeSecStart, agregatedSRow)
                 else:
@@ -118,7 +118,7 @@ class Cumulator(object):
         # update or insert?
         #TODO per config: linking to source rows
         id = 0
-        sql = "SELECT id" + \
+        sql = "SELECT id, " + ", ".join(block.DimTableRow.Fields) + \
             " FROM " + self._config.Name + \
             " WHERE time_sec = %s and grp_hash = %s;"
         params = (block.TimeSecObj.TimeSecStart, block.GroupHash)
@@ -128,9 +128,15 @@ class Cumulator(object):
             isUpdate = False
             if dbRow:
                 id = dbRow[0] # from select
-                isUpdate = True
+                isUpdateNeeded = False
+                for i in range(1, len(block.DimTableRow.Fields)):
+                    fromSelect = dbRow[i+1]
+                    fromVo = block.DimTableRow.FieldsValues[i]
+                    if fromSelect != fromVo:
+                        isUpdateNeeded = True
+                        break
         # try update
-        if dbRow:
+        if dbRow and isUpdateNeeded:
             sql = "UPDATE " + self._config.Name + \
                   " SET " + ", ".join([e + " = %s" for e in dimT.Fields]) + \
                   "     , grp_hash = %s, time_sec_update = %s " + \
@@ -140,9 +146,10 @@ class Cumulator(object):
                      [block.TimeSecObj.TimeSecStart, block.GroupHash]
             with db as cur:
                 cur.execute(sql, params)
+                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, id, block.Rows.keys())
             _callback(self._worker, self._config.OnDtUpdate,
-                DtUpdateEvArgs(block, id, sql, params))
-        else:
+                DtUpdateEvArgs(block, id, sql, params, interDeleteCnt, interInsertCnt))
+        elif not dbRow:
             #insert
             sql = "INSERT " + self._config.Name + " (" + ", ".join(dimT.Fields + dimT.Groups) + \
                   "    , grp_hash, time_sec_insert) " + \
@@ -152,11 +159,32 @@ class Cumulator(object):
                      [block.GroupHash, datetimeUtil.getUtcNowSeconds()]
             with db as cur:
                 cur.execute(sql, params)
-                if id == 0:
-                    id = cur.lastrowid # get id from insert
+                id = cur.lastrowid # get id from insert
+                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, id, block.Rows.keys())
             _callback(self._worker, self._config.OnDtInsert,
-                DtInsertEvArgs(block, id, sql, params))
+                DtInsertEvArgs(block, id, sql, params, interDeleteCnt, interInsertCnt ))
 
-
-        #TODO: link dim table row "id" to the source rows "block.Rows"
-        pass
+    def _updateIntermediateTable(self, cur, id, sourceRowIDLst):
+        #link dim table row "id" to the source rows "block.Rows"
+        if self._config.IntermediateTable:
+            cIT = self._config.IntermediateTable
+            # remove rows not in set
+            sqlDelete = "DELETE FROM " + cIT.TableName + \
+                " WHERE " + cIT.SourceID + " = %s " + \
+                " AND " + cIT.DimTableID + " NOT IN (" + ", ".join(["%s" for e in sourceRowIDLst]) + ");"
+            paramsDelete = [id] + sourceRowIDLst
+            cur.execute(sqlDelete, paramsDelete)
+            deleteCount = cur.rowcount
+            # add rows not in list
+            sqlInsert = "INSERT INTO " + cIT.TableName + " (" + cIT.SourceID + ", " + cIT.DimTableID + ")" + \
+                " SELECT %s as leftid, " + \
+                "     righttab.rightid " + \
+                " FROM (" + " UNION ".join(["SELECT %s as rightid" for e in sourceRowIDLst]) + ") as righttab" + \
+                " LEFT JOIN " + cIT.TableName + " as inter_table " + \
+                "     ON  inter_table." + cIT.SourceID + " = %s " + \
+                "     AND inter_table." + cIT.DimTableID + " = righttab.rightid " + \
+                " WHERE inter_table." + cIT.SourceID + " is null;"
+            paramsInsert = [id] + sourceRowIDLst + [id]
+            cur.execute(sqlInsert, paramsInsert)
+            insertCount = cur.rowcount
+            return deleteCount, insertCount
