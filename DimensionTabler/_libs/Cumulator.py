@@ -127,7 +127,7 @@ class Cumulator(object):
             dbRow = cur.fetchone()
             isUpdate = False
             if dbRow:
-                id = dbRow[0] # from select
+                block.DimTableRowID = dbRow[0] # from select
                 isUpdateNeeded = False
                 for i in range(1, len(block.DimTableRow.Fields)):
                     fromSelect = dbRow[i+1]
@@ -146,7 +146,7 @@ class Cumulator(object):
                      [block.TimeSecObj.TimeSecStart, block.GroupHash]
             with db as cur:
                 cur.execute(sql, params)
-                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, id, block.Rows.keys())
+                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, block)
             _callback(self._worker, self._config.OnDtUpdate,
                 DtUpdateEvArgs(block, id, sql, params, interDeleteCnt, interInsertCnt))
         elif not dbRow:
@@ -159,32 +159,43 @@ class Cumulator(object):
                      [block.GroupHash, datetimeUtil.getUtcNowSeconds()]
             with db as cur:
                 cur.execute(sql, params)
-                id = cur.lastrowid # get id from insert
-                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, id, block.Rows.keys())
+                block.DimTableRowID = cur.lastrowid # get id from insert
+                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, block)
             _callback(self._worker, self._config.OnDtInsert,
                 DtInsertEvArgs(block, id, sql, params, interDeleteCnt, interInsertCnt ))
 
-    def _updateIntermediateTable(self, cur, id, sourceRowIDLst):
+    def _updateIntermediateTable(self, cur, block):
         #link dim table row "id" to the source rows "block.Rows"
         if self._config.IntermediateTable:
-            cIT = self._config.IntermediateTable
+            sourceRowIDLst = block.RowsWithFillGaps.keys()
+            id = block.DimTableRowID
+
             # remove rows not in set
+            cIT = self._config.IntermediateTable
             sqlDelete = "DELETE FROM " + cIT.TableName + \
-                " WHERE " + cIT.SourceID + " = %s " + \
-                " AND " + cIT.DimTableID + " NOT IN (" + ", ".join(["%s" for e in sourceRowIDLst]) + ");"
-            paramsDelete = [id] + sourceRowIDLst
+                        " WHERE " + cIT.DimTableID + " = %s "
+            if not len(sourceRowIDLst):
+                # remove all rows with dimension table id
+                paramsDelete = [id]
+            else:
+                sqlDelete += " AND " + cIT.SourceID + " NOT IN (" + ", ".join(["%s" for e in sourceRowIDLst]) + ");"
+                paramsDelete = [id] + sourceRowIDLst
             cur.execute(sqlDelete, paramsDelete)
             deleteCount = cur.rowcount
-            # add rows not in list
-            sqlInsert = "INSERT INTO " + cIT.TableName + " (" + cIT.SourceID + ", " + cIT.DimTableID + ")" + \
-                " SELECT %s as leftid, " + \
-                "     righttab.rightid " + \
-                " FROM (" + " UNION ".join(["SELECT %s as rightid" for e in sourceRowIDLst]) + ") as righttab" + \
-                " LEFT JOIN " + cIT.TableName + " as inter_table " + \
-                "     ON  inter_table." + cIT.SourceID + " = %s " + \
-                "     AND inter_table." + cIT.DimTableID + " = righttab.rightid " + \
-                " WHERE inter_table." + cIT.SourceID + " is null;"
-            paramsInsert = [id] + sourceRowIDLst + [id]
-            cur.execute(sqlInsert, paramsInsert)
-            insertCount = cur.rowcount
+
+            # add row links
+            insertCount = 0
+            if len(sourceRowIDLst):
+                # add rows not in list
+                sqlInsert = "INSERT INTO " + cIT.TableName + " (" + cIT.DimTableID + ", " + cIT.SourceID + ")" + \
+                    " SELECT %s as leftid, " + \
+                    "     righttab.rightid " + \
+                    " FROM (" + " UNION ".join(["SELECT %s as rightid" for e in sourceRowIDLst]) + ") as righttab" + \
+                    " LEFT JOIN " + cIT.TableName + " as inter_table " + \
+                    "     ON  inter_table." + cIT.DimTableID + " = %s " + \
+                    "     AND inter_table." + cIT.SourceID + " = righttab.rightid " + \
+                    " WHERE inter_table." + cIT.SourceID + " is null;"
+                paramsInsert = [id] + sourceRowIDLst + [id]
+                cur.execute(sqlInsert, paramsInsert)
+                insertCount = cur.rowcount
             return deleteCount, insertCount

@@ -1,1 +1,7 @@
-v0.0.1, 11.02.2018 -- Initial release.
+v0.1.2, 24.02.2018 -- functional alpha I will test in production
+- creation/updating of dimension tables fully working
+- cumulation of source rows using built-in or custom functions (called post-processing)
+- more features than I wanted to do for 0.1.2, need to document all cool features soon
+- tests in production start tomorrow
+
+v0.1.1, 11.02.2018 -- Initial release.

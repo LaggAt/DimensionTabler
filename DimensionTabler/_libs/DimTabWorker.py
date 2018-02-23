@@ -24,6 +24,10 @@ class DimTabWorker(object):
         self._cumulator = Cumulator(self)
 
     @property
+    def Config(self):
+        return self._config
+
+    @property
     def NowTimeSec(self):
         return self._nowTimeSec
 

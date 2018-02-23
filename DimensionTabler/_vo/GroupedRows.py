@@ -12,6 +12,9 @@ class GroupedRows(MyIterBase):
         super(GroupedRows, self).__init__(self._timeSecGroups)
         self._worker = worker
 
+    @property
+    def Worker(self):
+        return self._worker
 
     def AddOrGetTS(self, dim, timeSecStart, timeSecEnd):
         ts = self.GetTS(timeSecStart)
@@ -119,6 +122,7 @@ class GroupingGroup(MyIterBase):
         self._timeSecObj = timeSecObj
         self._setDirty()
         self._dimTableRow = None
+        self._dimTableRowID = None
 
     @property
     def GroupHash(self):
@@ -139,6 +143,13 @@ class GroupingGroup(MyIterBase):
     def DimTableRow(self, value):
         self._dimTableRow = value
 
+    @property
+    def DimTableRowID(self):
+        return self._dimTableRowID
+    @DimTableRowID.setter
+    def DimTableRowID(self, value):
+        self._dimTableRowID = value
+
     def _setDirty(self):
         self._dirty = True
         self._timeSecObj._setDirty()
@@ -146,6 +157,22 @@ class GroupingGroup(MyIterBase):
     @property
     def Rows(self):
         return self._rows
+
+    @property
+    def RowsWithFillGaps(self):
+        myRows = self.Rows
+        if not len(myRows) and self.TimeSecObj.GroupedRowsObj.Worker.Config:
+            g = self.PrevGroupingGroup
+            if len(g):
+                myRows = g.RowsWithFillGaps
+        return myRows
+
+    @property
+    def PrevGroupingGroup(self):
+        prevTS = self.TimeSecObj.GroupedRowsObj.GetTSBefore(self.TimeSecObj.TimeSecStart)
+        if prevTS:
+            return prevTS.GetG(self.GroupHash)
+        return None
 
     def AddRow(self, sRow):
         if sRow.Id in self._rows:

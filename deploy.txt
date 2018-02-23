@@ -2,7 +2,7 @@
 
 PATH = %PATH%;"C:\Program Files (x86)\Pandoc"
 python setup.py sdist
-twine upload dist/DimensionTabler-0.1.1.tar.gz -r testpypi
+twine upload dist/DimensionTabler-0.1.2.tar.gz -r testpypi
 # review here: https://test.pypi.org/project/DimensionTabler/#description
 
 ### production
