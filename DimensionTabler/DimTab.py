@@ -14,7 +14,7 @@ class DimTab(object):
     def __init__(self, configLst):
         super(DimTab, self).__init__()
         self._workerLst = []
-        if (type(configLst) is list) and (all(type(element) is Config for element in configLst)):
+        if (type(configLst) is list) and (all(isinstance(element, Config) for element in configLst)):
             for config in configLst:
                 self._workerLst.append(
                     DimTabWorker(config)

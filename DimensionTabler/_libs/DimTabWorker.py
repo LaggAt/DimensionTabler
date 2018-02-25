@@ -8,7 +8,7 @@ from DimensionTabler._utils import datetimeUtil
 from DimensionTabler._utils.callbackHandler import _callback
 from DimensionTabler._vo.SourceRow import SourceRow
 from DimensionTabler._vo.Dimensions import Dimensions
-from _libs.SchemaUpdater import SchemaUpdater
+from DimensionTabler._libs.SchemaUpdater import SchemaUpdater
 from DimensionTabler.DimTabEvArgs import *
 
 class DimTabWorker(object):

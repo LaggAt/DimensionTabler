@@ -6,11 +6,11 @@
 from copy import copy
 from DimensionTabler.DimTabConfig import DimTabConfig
 from more_itertools import one
-from DimensionTabler._utils.fxHandler import FxHandler
 import urllib
+from DimensionTabler._utils.fxHandler import FxHandler
 from DimensionTabler._vo.DimensionTableRow import DimensionTableRow
 from DimensionTabler._vo.GroupedRows import GroupedRows
-from _utils import datetimeUtil
+from DimensionTabler._utils import datetimeUtil
 from DimensionTabler._utils.callbackHandler import _callback
 from DimensionTabler.DimTabEvArgs import *
 
@@ -116,7 +116,6 @@ class Cumulator(object):
             return
 
         # update or insert?
-        #TODO per config: linking to source rows
         id = 0
         sql = "SELECT id, " + ", ".join(block.DimTableRow.Fields) + \
             " FROM " + self._config.Name + \
@@ -165,6 +164,8 @@ class Cumulator(object):
                 DtInsertEvArgs(block, id, sql, params, interDeleteCnt, interInsertCnt ))
 
     def _updateIntermediateTable(self, cur, block):
+        deleteCount = 0
+        insertCount = 0
         #link dim table row "id" to the source rows "block.Rows"
         if self._config.IntermediateTable:
             sourceRowIDLst = block.RowsWithFillGaps.keys()
@@ -198,4 +199,4 @@ class Cumulator(object):
                 paramsInsert = [id] + sourceRowIDLst + [id]
                 cur.execute(sqlInsert, paramsInsert)
                 insertCount = cur.rowcount
-            return deleteCount, insertCount
+        return deleteCount, insertCount
