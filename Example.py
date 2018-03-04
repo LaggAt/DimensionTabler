@@ -33,9 +33,12 @@ def getDTTickerConfig():
     #       in this example we use this feature for paging
     #   fx_<method>_* are methods. Currently we only support methods using only a single input. This will change.
     #       for a list of supported methods see ./DimensionTabler/_utils/fx.py
+    # HINT: You may want to get the Timezone right on MySQL, we expect UTC. See:
+    # SET GLOBAL time_zone = '+00:00'; -- system wide
+    # SET time_zone = '+00:00'; -- for this connection (you may use Vars below)
     config.SqlMain = """
         SELECT 
-            ticker.id as wallet_id, 
+            ticker.id as ticker_id, 
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) AS time_sec,
             currency as group_currency,
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) as var_iter,
@@ -57,6 +60,11 @@ def getDTTickerConfig():
         # they come with: a name without @, a SQL to initialize them including VALUE, the initial VALUE
         DimTabConfig.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
     ]
+
+    #regardless of what default values for Variables say, start at the last element written.
+    # This is good for getting new data, but bad if we missed a jumpback - we ignore that for now.
+    # TODO: use two different iterators in worker, one for jumpbacks and default value, one for current data.
+    config.StartAtEnd = True;
 
     #PostProcessorDict: Dict with field name and post-processing function.
     # this is a dict with dimension table fields as key, and a function as value.
@@ -170,8 +178,8 @@ class CallbackHandler(object):
         :type jumpBackEvArgs: JumpBackEvArgs
         """
         print("Jumping back from %s to %s." % (
-            getDateTimeFromSeconds(jumpBackEvArgs.WasOnSec),
-            getDateTimeFromSeconds(jumpBackEvArgs.JumpBackBeforeSec)))
+            unixtimeToUtc(jumpBackEvArgs.WasOnSec),
+            unixtimeToUtc(jumpBackEvArgs.JumpBackBeforeSec)))
 
 if __name__ == "__main__":
     # you probably want more than one dimension table, so we use a list here

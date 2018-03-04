@@ -22,11 +22,14 @@ class Cumulator(object):
         self._worker = worker
         self._config = worker._config
         self._lastCumulationSec = datetimeUtil.getUtcNowSeconds()
+        self._lastMemCleanupSec = datetimeUtil.getUtcNowSeconds()
 
     def AddRow(self, row):
         # get the dimension this row is in
         dim, timeSecStart, timeSecEnd = \
             self._worker.Dimensions.GetDimensionAndTimeSecSlotStartAndEndForTimeSec(row.TimeSec)
+        _callback(self._worker, self._config.OnSourceRow,
+              SourceRowEvArgs(row, dim, timeSecStart, timeSecEnd))
         # create structure self._groupedRows...
         tempTsG = self._addTSGroup(dim, timeSecStart, timeSecEnd)
         tempG =   tempTsG.AddOrGetG(row.GroupHash)
@@ -61,10 +64,10 @@ class Cumulator(object):
                 g = ts.AddOrGetG(earlierG.GroupHash)
         return ts
 
-    def DoCumulate(self):
+    def DoCumulate(self, force = False):
         # cumulate and update only every seconds
         now = datetimeUtil.getUtcNowSeconds()
-        if now >= self._lastCumulationSec + self._config.WaitSecondsBeforeCumulating:
+        if force or (now >= self._lastCumulationSec + self._config.WaitSecondsBeforeCumulating):
             dirtyBlocks = self._groupedRows.GetDirtyBlocks(clearDirty=True)
             for block in dirtyBlocks:
                 # cumulate block and create dimension table row
@@ -76,7 +79,7 @@ class Cumulator(object):
                         gBefore = block.TimeSecObj.GroupedRowsObj\
                             .GetTSBefore(block.TimeSecObj.TimeSecStart) \
                             .GetG(block.GroupHash)
-                        if gBefore is None:
+                        if gBefore is None or gBefore.DimTableRow is None:
                             block.DimTableRow = None
                         else:
                             block.DimTableRow = DimensionTableRow(block.TimeSecObj.TimeSecStart, gBefore.DimTableRow.SourceRow)
@@ -84,7 +87,9 @@ class Cumulator(object):
                         #no row for that!
                         block.DimTableRow = None
                 self._updateDimensionTableRow(block)
-            self._groupedRows.RemoveOldBlocks()
+            if now >= self._lastMemCleanupSec + self._config.WaitSecondsBeforeMemCleanup:
+                self._groupedRows.RemoveOldBlocks()
+                self._lastMemCleanupSec = datetimeUtil.getUtcNowSeconds()
             # set the stopwatch again
             self._lastCumulationSec = datetimeUtil.getUtcNowSeconds()
 
@@ -119,7 +124,7 @@ class Cumulator(object):
         id = 0
         sql = "SELECT id, " + ", ".join(block.DimTableRow.Fields) + \
             " FROM " + self._config.Name + \
-            " WHERE time_sec = %s and grp_hash = %s;"
+            " WHERE time_sec = %s and grp_hash = %s"
         params = (block.TimeSecObj.TimeSecStart, block.GroupHash)
         with db as cur:
             cur.execute(sql, params)
@@ -162,6 +167,10 @@ class Cumulator(object):
                 interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, block)
             _callback(self._worker, self._config.OnDtInsert,
                 DtInsertEvArgs(block, id, sql, params, interDeleteCnt, interInsertCnt ))
+        else:
+            with db as cur:
+                interDeleteCnt, interInsertCnt = self._updateIntermediateTable(cur, block)
+        pass
 
     def _updateIntermediateTable(self, cur, block):
         deleteCount = 0

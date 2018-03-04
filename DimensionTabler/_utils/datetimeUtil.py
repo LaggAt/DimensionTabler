@@ -3,13 +3,19 @@
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
 
-from datetime import *
+from datetime import datetime
+import pytz
 
 def getUtcNowSeconds():
-    return getSecondsFromDateTime(datetime.utcnow())
+    return utcToUnixtime(datetime.utcnow())
 
-def getSecondsFromDateTime(dt):
-    return int((dt - datetime(1970, 1, 1)).total_seconds())
+def utcToUnixtime(utcDatetime):
+    epochStart = pytz.utc.localize(datetime(1970, 1, 1))
+    if utcDatetime.tzinfo == None:
+        utcDatetime = pytz.utc.localize(utcDatetime)
+    timestamp = (utcDatetime - epochStart).total_seconds()
+    return timestamp
 
-def getDateTimeFromSeconds(utcSeconds):
-    return datetime.utcfromtimestamp(utcSeconds)
+def unixtimeToUtc(timestampUTC):
+    utc = pytz.utc.localize(datetime.utcfromtimestamp(timestampUTC))
+    return utc

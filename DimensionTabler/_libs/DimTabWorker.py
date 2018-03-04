@@ -21,7 +21,23 @@ class DimTabWorker(object):
         self._isSchemaOK = False
         self._jumpBackBeforeSec = 0
         self._dimensions = Dimensions(self._config.Dimensions, self._cbJumpbackNeeded)
+        if self._config.StartAtEnd:
+            self._getVariableStartPoint()
         self._cumulator = Cumulator(self)
+
+    def _getVariableStartPoint(self):
+        db = self._config.Db
+        varNames = [v.Name[1:] for v in self._config.VariableConfigLst]
+        with db as cur:
+            sql = "SELECT %s FROM %s ORDER BY time_sec desc limit 1" % (
+                ", ".join(varNames),
+                self._config.Name,
+            )
+            cur.execute(sql)
+            result = cur.fetchone()
+        if result:
+            for var, startVal in zip(self._config.VariableConfigLst, result):
+                var.Value = startVal
 
     @property
     def Config(self):
@@ -139,9 +155,8 @@ class DimTabWorker(object):
             for row in self._getData():
                 batchHasData = True
                 self._setCurrentSourceRowAndTimeSec(row)
-                _callback(self, self._config.OnSourceRow)
                 self._cumulator.AddRow(row)
             if batchHasData:
                 self._updateVars(row)
-        self._cumulator.DoCumulate()
+        self._cumulator.DoCumulate(force=True)
         _callback(self, self._config.OnBatchCurrent)

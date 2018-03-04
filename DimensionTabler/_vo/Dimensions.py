@@ -6,6 +6,7 @@
 from MyIterBase import MyIterBase
 from DimensionTabler.DimTabConfig import DimTabConfig
 from more_itertools import one
+from DimensionTabler._utils import datetimeUtil
 
 class Dimensions(MyIterBase):
     def __init__(self, dimensionsConfig, cbDoJumpBack):
@@ -30,6 +31,8 @@ class Dimensions(MyIterBase):
             # we want the same ranges within a timebox, so get start of timebox:
             start = self._getDimStartSec(timeSecSnapshot, dim)
             newDimensions[start] = dim
+        # mark newest dimension
+        newDimensions[max(newDimensions.keys())]._isNewest = True
         # do we need to jump back?
         if len(self._dimensions):
             oldTimeSecLst = sorted(self._dimensions.keys())
@@ -51,9 +54,15 @@ class Dimensions(MyIterBase):
             start = (start // -dim.TimeSec) * -dim.TimeSec
         return start
 
+    @property
+    def DebugDimensionStartDeltas(self):
+        return " | ".join([d.TimeSecReadable for d in self])
+
     def GetDimensionAndTimeSecSlotStartAndEndForTimeSec(self, timeSec):
+        debugDt = datetimeUtil.unixtimeToUtc(timeSec)
         nextDimensionStart = None
         for key in self.keys():
+            debugDimStartDT = datetimeUtil.unixtimeToUtc(key)
             if timeSec < key:
                 nextDimensionStart = key
                 break
@@ -64,7 +73,10 @@ class Dimensions(MyIterBase):
             timeSecStart = (timeSecStart // dim.GranularitySec) * dim.GranularitySec
         # end of time slot
         timeSecEnd = timeSecStart + dim.GranularitySec
-        if nextDimensionStart and timeSecEnd >= nextDimensionStart:
+        # is the time slot overlapping with the next dimension start?
+        if not dim.IsNewest and (nextDimensionStart and timeSecEnd > nextDimensionStart):
             timeSecEnd = nextDimensionStart # so use "<"
         # return Tuple with Dimension, time slot start and end seconds.
+        debugDtBlockStart = datetimeUtil.unixtimeToUtc(timeSecStart)
+        debugDtBlockEnd = datetimeUtil.unixtimeToUtc(timeSecEnd)
         return dim, timeSecStart, timeSecEnd

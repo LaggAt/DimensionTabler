@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
-from _utils.dbHandler import DbHandler
 
+from _utils.dbHandler import DbHandler
+from DimensionTabler._utils import datetimeUtil
+from datetime import timedelta
 
 class DimTabConfig(object):
     def __init__(self, tableName):
@@ -15,10 +17,12 @@ class DimTabConfig(object):
         self._db = None
         self._sqlMain = ""
         self._variableConfigLst = []
+        self._startAtEnd = False
         self._postProcessorDict = {}
         self._dimensions = []
         self._fillGapsWithPreviousResult = False
-        self._waitSecondsBeforeCumulating = 3
+        self._waitSecondsBeforeCumulating = 10
+        self._waitSecondsBeforeMemCleanup = 0
         self._onGetData = None
         self._onSourceRow = None
         self._onBatchCurrent = None
@@ -114,6 +118,17 @@ class DimTabConfig(object):
             raise Exception("Value must be a list of DimTabConfig.VariableConfig.")
 
     @property
+    def StartAtEnd(self):
+        return self._startAtEnd
+
+    @StartAtEnd.setter
+    def StartAtEnd(self, value):
+        if type(value) is bool:
+            self._startAtEnd = value
+        else:
+            raise Exception("If you want to start at the last dt-line written set this True. Possibly misses jump back's.")
+
+    @property
     def PostProcessorDict(self):
         return self._postProcessorDict
     @PostProcessorDict.setter
@@ -132,6 +147,7 @@ class DimTabConfig(object):
                 raise Exception("timeSec must be number of seconds or a DIMENSION_TIMESEC_* constant.")
             self._timeSec = timeSec
             self._isPast = False
+            self._isNewest = False
             if timeSec == DimTabConfig.DIMENSION_TIMESEC_PAST:
                 self._isPast = True
             if not type(granularitySec) is int:
@@ -143,9 +159,20 @@ class DimTabConfig(object):
         @property
         def TimeSec(self):
             return self._timeSec
+
+        @property
+        def TimeSecReadable(self):
+            if self.TimeSec > 0:
+                return "in %s" % (timedelta(seconds=self.TimeSec),)
+            elif self.TimeSec < 0:
+                return "%s ago" % (timedelta(seconds=-self.TimeSec),)
+            return "now"
         @property
         def IsPast(self):
             return self._isPast
+        @property
+        def IsNewest(self):
+            return self._isNewest
         @property
         def GranularitySec(self):
             return self._granularitySec
@@ -181,7 +208,22 @@ class DimTabConfig(object):
             self._waitSecondsBeforeCumulating = value
         else:
             raise Exception(
-                "Value must be a bool. True fills empty time_sec/groups with results from previous time_sec")
+                "Value must be seconds.")
+
+    @property
+    def WaitSecondsBeforeMemCleanup(self):
+        if self._waitSecondsBeforeMemCleanup:
+            return self._waitSecondsBeforeMemCleanup
+        else:
+            return self._waitSecondsBeforeCumulating * 10
+
+    @WaitSecondsBeforeMemCleanup.setter
+    def WaitSecondsBeforeMemCleanup(self, value):
+        if type(value) is int:
+            self._waitSecondsBeforeMemCleanup = value
+        else:
+            raise Exception(
+                "Value must be seconds. Defaults to WaitSecondsBeforeCumulating * 10.")
 
     @property
     def OnGetData(self):

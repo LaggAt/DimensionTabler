@@ -34,6 +34,12 @@ class GroupedRows(MyIterBase):
             return self[max(keysSmaller)]
         return None
 
+    def GetTSAfter(self, timeSec):
+        keysBigger = [k for k in self.keys() if k > timeSec]
+        if keysBigger:
+            return self[min(keysBigger)]
+        return None
+
     # GroupedRows: TimeSecGroup dirty blocks
     def GetDirtyBlocks(self, clearDirty = False):
         for tsGroup in self:
@@ -46,15 +52,19 @@ class GroupedRows(MyIterBase):
 
     def RemoveOldBlocks(self):
         keepBeforeDirty = 3
-        keyStack = []
-        for obj in self:
-            keyStack.append(obj.TimeSecStart)
-            if obj.Dirty:
+        # find last non-dirty
+        tsStack = []
+        for tsObj in self:
+            if tsObj.Dirty:
                 break
-        # we reached end of list, or first dirty item
-        removeKeys = keyStack[:-1-keepBeforeDirty]
-        for k in removeKeys:
-            self._timeSecGroups.pop(k)
+            tsStack.append(tsObj.TimeSecStart)
+        if len(tsStack):
+            # remove some elements if we still need parents
+            tsStack = sorted([ts for ts in tsStack if ts <= tsObj.MinParentTsWithFillGaps])
+            # remove all but last keepBeforeDirty items
+            removeKeys = tsStack[:-keepBeforeDirty]
+            for k in removeKeys:
+                self._timeSecGroups.pop(k)
 
 class TimeSecGroup(MyIterBase):
     def __init__(self, dim, timeSecStart, timeSecEnd, groupedRowsObj):
@@ -93,6 +103,14 @@ class TimeSecGroup(MyIterBase):
     def GroupedRowsObj(self):
         return self._groupedRowsObj
 
+    @property
+    def MinParentTsWithFillGaps(self):
+        retTS = self.TimeSecStart
+        for g in self:
+            parentTS = g.GParentWithFillGaps.TimeSecObj.TimeSecStart
+            retTS = min(retTS, parentTS)
+        return retTS
+
     def AddOrGetG(self, groupHash):
         g = self.GetG(groupHash)
         if not g:
@@ -113,13 +131,14 @@ class TimeSecGroup(MyIterBase):
                     gGroup._dirty = False
                 yield gGroup
 
-
 class GroupingGroup(MyIterBase):
     def __init__(self, groupHash, timeSecObj):
         self._rows = {}
         super(GroupingGroup, self).__init__(self._rows)
         self._groupHash = groupHash
+        self._dirty = False
         self._timeSecObj = timeSecObj
+        self._worker = self.TimeSecObj.GroupedRowsObj.Worker
         self._setDirty()
         self._dimTableRow = None
         self._dimTableRowID = None
@@ -151,27 +170,45 @@ class GroupingGroup(MyIterBase):
         self._dimTableRowID = value
 
     def _setDirty(self):
-        self._dirty = True
-        self._timeSecObj._setDirty()
+        if not self._dirty:
+            self._dirty = True
+            # next group is related to this?
+            if self._worker is not None and self._worker.Config.FillGapsWithPreviousResult:
+                g = self.NextGroupingGroup
+                if g is not None and not len(g.Rows):
+                    g._setDirty()
+            # also set time sec dirty
+            self._timeSecObj._setDirty()
 
     @property
     def Rows(self):
         return self._rows
 
     @property
-    def RowsWithFillGaps(self):
-        myRows = self.Rows
-        if not len(myRows) and self.TimeSecObj.GroupedRowsObj.Worker.Config:
+    def GParentWithFillGaps(self):
+        retG = self
+        if not len(self.Rows) and self._worker is not None and self._worker.Config.FillGapsWithPreviousResult:
             g = self.PrevGroupingGroup
-            if len(g):
-                myRows = g.RowsWithFillGaps
-        return myRows
+            if g is not None:
+                retG = g.GParentWithFillGaps
+        return retG
+
+    @property
+    def RowsWithFillGaps(self):
+        return self.GParentWithFillGaps.Rows
 
     @property
     def PrevGroupingGroup(self):
         prevTS = self.TimeSecObj.GroupedRowsObj.GetTSBefore(self.TimeSecObj.TimeSecStart)
         if prevTS:
             return prevTS.GetG(self.GroupHash)
+        return None
+
+    @property
+    def NextGroupingGroup(self):
+        nextTS = self.TimeSecObj.GroupedRowsObj.GetTSAfter(self.TimeSecObj.TimeSecStart)
+        if nextTS:
+            return nextTS.GetG(self.GroupHash)
         return None
 
     def AddRow(self, sRow):

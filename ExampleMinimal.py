@@ -19,7 +19,7 @@ def getDTTickerConfig():
     # Main-SQL is needed:
     config.SqlMain = """
         SELECT 
-            ticker.id as wallet_id, 
+            ticker.id as ticker_id, 
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) AS time_sec,
             currency as group_currency,
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) as var_iter,

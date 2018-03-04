@@ -4,6 +4,7 @@
 # Under Terms of GPL v3
 
 from _vo.EvArgsBase import EvArgsBase
+from DimensionTabler._utils import datetimeUtil
 
 class GetDataEvArgs(EvArgsBase):
     def __init__(self, sqlLst, count):
@@ -19,8 +20,34 @@ class GetDataEvArgs(EvArgsBase):
     def Count(self):
         return self._count
 
+class SourceRowEvArgs(EvArgsBase):
+    def __init__(self, sRow, dim, timeSecStart, timeSecEnd):
+        super(SourceRowEvArgs, self).__init__()
+        self._sRow = sRow
+        self._dim = dim
+        self._timeSecStart = timeSecStart
+        self._timeSecEnd = timeSecEnd
 
-class JumpBackEvArgs(object):
+    @property
+    def SourceRow(self):
+        return self._sRow
+    @property
+    def Dimension(self):
+        return self._dim
+    @property
+    def TimeSecStart(self):
+        return self._timeSecStart
+    @property
+    def TimeSecEnd(self):
+        return self._timeSecEnd
+    @property
+    def UtcDateStart(self):
+        return datetimeUtil.unixtimeToUtc(self._timeSecStart)
+    @property
+    def UtcDateEnd(self):
+        return datetimeUtil.unixtimeToUtc(self._timeSecEnd)
+
+class JumpBackEvArgs(EvArgsBase):
     def __init__(self, sRowStartPoint, jumpBackBeforeSec, wasOnSec):
         super(JumpBackEvArgs, self).__init__()
         self._sRowStartPoint = sRowStartPoint

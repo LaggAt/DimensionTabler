@@ -5,7 +5,8 @@
 
 import urllib
 import hashlib
-from datetime import *
+from DimensionTabler._utils import datetimeUtil
+import pytz
 
 class SourceRow(object):
     def __init__(self, nameLst, row):
@@ -44,14 +45,14 @@ class SourceRow(object):
     def TimeSec(self):
         return self._timeSec
     @property
+    def UtcDate(self):
+        return datetimeUtil.unixtimeToUtc(self._timeSec)
+    @property
     def GroupHash(self):
         return self._groupHash
     @property
     def Grouping(self):
         return self._groups
-    @property
-    def UtcDate(self):
-        return datetime.utcfromtimestamp(self._timeSec)
     @property
     def Vars(self):
         return self._vars
