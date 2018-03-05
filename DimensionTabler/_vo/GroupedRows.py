@@ -3,13 +3,12 @@
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
 
-from MyIterBase import MyIterBase
+from MyIterBase import *
 
-
-class GroupedRows(MyIterBase):
+class GroupedRows(MyDict):
     def __init__(self, worker):
-        self._timeSecGroups = {}
-        super(GroupedRows, self).__init__(self._timeSecGroups)
+        ### Dict over TimeSec groups
+        super(GroupedRows, self).__init__()
         self._worker = worker
 
     @property
@@ -18,9 +17,9 @@ class GroupedRows(MyIterBase):
 
     def AddOrGetTS(self, dim, timeSecStart, timeSecEnd):
         ts = self.GetTS(timeSecStart)
-        if not ts:
+        if ts is None:
             ts = TimeSecGroup(dim, timeSecStart, timeSecEnd, self)
-            self._timeSecGroups[timeSecStart] = ts
+            self[timeSecStart] = ts
         return ts
 
     def GetTS(self, timeSecStart):
@@ -29,16 +28,10 @@ class GroupedRows(MyIterBase):
         return None
 
     def GetTSBefore(self, timeSec):
-        keysSmaller = [k for k in self.keys() if k < timeSec]
-        if keysSmaller:
-            return self[max(keysSmaller)]
-        return None
+        return self.GetPrev(timeSec)
 
     def GetTSAfter(self, timeSec):
-        keysBigger = [k for k in self.keys() if k > timeSec]
-        if keysBigger:
-            return self[min(keysBigger)]
-        return None
+        return self.GetNext(timeSec)
 
     # GroupedRows: TimeSecGroup dirty blocks
     def GetDirtyBlocks(self, clearDirty = False):
@@ -64,12 +57,12 @@ class GroupedRows(MyIterBase):
             # remove all but last keepBeforeDirty items
             removeKeys = tsStack[:-keepBeforeDirty]
             for k in removeKeys:
-                self._timeSecGroups.pop(k)
+                self.pop(k)
 
-class TimeSecGroup(MyIterBase):
+class TimeSecGroup(MyDict):
     def __init__(self, dim, timeSecStart, timeSecEnd, groupedRowsObj):
-        self._groupings = {}
-        super(TimeSecGroup, self).__init__(self._groupings)
+        ### Dict over Group hashes
+        super(TimeSecGroup, self).__init__()
         self._dim = dim
         self._timeSecStart = timeSecStart
         self._timeSecEnd = timeSecEnd
@@ -113,14 +106,14 @@ class TimeSecGroup(MyIterBase):
 
     def AddOrGetG(self, groupHash):
         g = self.GetG(groupHash)
-        if not g:
+        if g is None:
             g = GroupingGroup(groupHash, self)
-            self._groupings[groupHash] = g
+            self[groupHash] = g
         return g
 
     def GetG(self, groupHash):
         if groupHash in self.keys():
-            return self._groupings[groupHash]
+            return self[groupHash]
         return None
 
     # TimeSecGroup: GroupingGroup dirty blocks
@@ -131,10 +124,10 @@ class TimeSecGroup(MyIterBase):
                     gGroup._dirty = False
                 yield gGroup
 
-class GroupingGroup(MyIterBase):
+class GroupingGroup(MyDict):
     def __init__(self, groupHash, timeSecObj):
-        self._rows = {}
-        super(GroupingGroup, self).__init__(self._rows)
+        ### dict over source rows
+        super(GroupingGroup, self).__init__()
         self._groupHash = groupHash
         self._dirty = False
         self._timeSecObj = timeSecObj
@@ -182,7 +175,7 @@ class GroupingGroup(MyIterBase):
 
     @property
     def Rows(self):
-        return self._rows
+        return self
 
     @property
     def GParentWithFillGaps(self):
@@ -212,12 +205,12 @@ class GroupingGroup(MyIterBase):
         return None
 
     def AddRow(self, sRow):
-        if sRow.Id in self._rows:
+        if sRow.Id in self:
             # source row changed, update it
-            if self._rows[sRow.Id] != sRow:
-                self._rows[sRow.Id] = sRow
+            if self[sRow.Id] != sRow:
+                self[sRow.Id] = sRow
                 self._setDirty()
         else:
-            self._rows[sRow.Id] = sRow
+            self[sRow.Id] = sRow
             self._setDirty()
         return sRow

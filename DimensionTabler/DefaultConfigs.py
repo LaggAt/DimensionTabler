@@ -15,7 +15,7 @@ class ConfDefault(DimTabConfig):
 
     def _setDefaults(self):
         self.Dimensions = [
-            DimTabConfig.DimensionConfig(" aktuell",             -0,       60),
+            DimTabConfig.DimensionConfig(" aktuell",         -15*60,       60),
             DimTabConfig.DimensionConfig("last  1h",         -60*60,     5*60),
             DimTabConfig.DimensionConfig("last 12h",      -12*60*60,    15*60),
             DimTabConfig.DimensionConfig("last 24h",      -24*60*60,    30*60),

@@ -3,7 +3,7 @@
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
 
-from MyIterBase import MyIterBase
+from MyIterBase import *
 from DimensionTabler.DimTabConfig import DimTabConfig
 from more_itertools import one
 from DimensionTabler._utils import datetimeUtil
@@ -16,6 +16,7 @@ class Dimensions(MyIterBase):
         self._cbDoJumpBack = cbDoJumpBack #returns TimeSec, we need to start before that
 
     def UpdateDimensions(self, timeSecSnapshot):
+        debugDtSnapshot = datetimeUtil.unixtimeToUtc(timeSecSnapshot)
         timeSecJumpback = None  # timeSec we need to jump back to
         # new structure based on current time_sec
         newDimensions = {}
@@ -30,6 +31,7 @@ class Dimensions(MyIterBase):
         for dim in dimensionsOrdered:
             # we want the same ranges within a timebox, so get start of timebox:
             start = self._getDimStartSec(timeSecSnapshot, dim)
+            debugDtDimStart = datetimeUtil.unixtimeToUtc(start)
             newDimensions[start] = dim
         # mark newest dimension
         newDimensions[max(newDimensions.keys())]._isNewest = True
@@ -43,7 +45,7 @@ class Dimensions(MyIterBase):
                     break
         # write altered dimensions
         self._dimensions = newDimensions
-        self._theDict = self._dimensions # needed to not break the MyIterBase.
+        self._theDict = self._dimensions # needed not to break the MyIterBase.
         # dimensions are ready, jump back if necessary
         if timeSecJumpback:
             self._cbDoJumpBack(timeSecJumpback)

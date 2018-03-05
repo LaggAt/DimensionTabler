@@ -60,8 +60,8 @@ class Cumulator(object):
             # create that earlier group (and all earliers to the next existing
             earlierTS = self._addTSGroup(tsBefore, tsBefore.TimeSecStart, tsBefore.TimeSecEnd)
             # add groups (hashes) for earlier groups, needed for deletion of old lines or generation of missing data
-            for earlierG in earlierTS:
-                g = ts.AddOrGetG(earlierG.GroupHash)
+            for earlierGHash in set(earlierTS.keys()).difference(set(ts.keys())):
+                g = ts.AddOrGetG(earlierGHash)
         return ts
 
     def DoCumulate(self, force = False):

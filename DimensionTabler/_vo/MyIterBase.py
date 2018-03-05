@@ -3,9 +3,14 @@
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
 
+from DimensionTabler._utils.myDict import MyDict
+
+#TODO maybe use MyDict directly instead of this class?
 class MyIterBase(object):
     def __init__(self, theDict):
         super(MyIterBase, self).__init__()
+        #if type(theDict) is not MyDict:
+        #    raise Exception("Use MyDict() instead of dict!")
         self._theDict = theDict
 
     # get an iterator of sorted objects
