@@ -3,7 +3,7 @@
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
 
-from _vo.EvArgsBase import EvArgsBase
+from DimensionTabler._vo.EvArgsBase import EvArgsBase
 from DimensionTabler._utils import datetimeUtil
 
 class GetDataEvArgs(EvArgsBase):

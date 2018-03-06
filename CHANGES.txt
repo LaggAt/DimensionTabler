@@ -1,3 +1,6 @@
+v0.1.5, 06.03.2018 -- better and more performant alpha
+more testing in production
+
 v0.1.2, 24.02.2018 -- functional alpha I will test in production
 - creation/updating of dimension tables fully working
 - cumulation of source rows using built-in or custom functions (called post-processing)

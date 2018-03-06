@@ -4,7 +4,7 @@
 # Under Terms of GPL v3
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
@@ -24,7 +24,7 @@ def get_long_description():
 
 setup(
     name = "DimensionTabler",
-    version = "0.1.2",
+    version = "0.1.6",
     author = "Florian Lagg",
     author_email = "github@florian.lagg.at",
     description = ("Builds dimension tables with configurable/variable grainularity."
@@ -32,7 +32,7 @@ setup(
     license = "GPL v3",
     keywords = "dimension tables database grafana bi business intelligence",
     url = "https://github.com/LaggAt/DimensionTabler",
-    packages=['DimensionTabler'], #, 'tests'],
+    packages=find_packages(),
     install_requires=[
         "more-itertools >= 4.1.0",
     ],

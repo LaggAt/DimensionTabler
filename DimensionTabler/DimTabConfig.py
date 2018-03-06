@@ -3,7 +3,7 @@
 # (c) 2018 Florian Lagg <github@florian.lagg.at>
 # Under Terms of GPL v3
 
-from _utils.dbHandler import DbHandler
+from DimensionTabler._utils.dbHandler import DbHandler
 from DimensionTabler._utils import datetimeUtil
 from datetime import timedelta
 

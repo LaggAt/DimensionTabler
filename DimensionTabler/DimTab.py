@@ -4,8 +4,8 @@
 # Under Terms of GPL v3
 
 import time
-from _libs.DimTabWorker import DimTabWorker
-from DimTabConfig import DimTabConfig as Config
+from DimensionTabler._libs.DimTabWorker import DimTabWorker
+from DimensionTabler.DimTabConfig import DimTabConfig as Config
 import sys
 import traceback
 
