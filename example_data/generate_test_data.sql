@@ -66,10 +66,11 @@ CREATE TABLE `dt_ticker` (
   `price_close` decimal(18,8) DEFAULT NULL,
   `price_average` DECIMAL(18,8) DEFAULT NULL,
   `var_iter` int(11) NULL,
+  `var_iter2` int(11) NULL,
   PRIMARY KEY (`id`),
   KEY `group_idx` (`time_sec`,`group_currency`),
-  KEY `first_wallet_id_idx` (`wallet_id_first`),
-  KEY `last_wallet_id_idx` (`wallet_id_last`)
+  KEY `first_ticker_id_idx` (`ticker_id_first`),
+  KEY `last_ticker_id_idx` (`ticker_id_last`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `dimensiontabler_demo`.`ticker__dt_ticker` (

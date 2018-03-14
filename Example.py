@@ -42,13 +42,15 @@ def getDTTickerConfig():
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) AS time_sec,
             currency as group_currency,
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) as var_iter,
+            ticker.id as var_iter2,
             price as fx_first_price_open, 
             price as fx_last_price_close, 
             price as fx_min_price_low, 
             price as fx_max_price_high,
             price as fx_avg_price_average
         FROM ticker
-        WHERE CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) > @var_iter
+        WHERE ticker.dt > FROM_UNIXTIME(@var_iter)
+        OR (ticker.dt = FROM_UNIXTIME(@var_iter) AND ticker.id > @var_iter2)
         -- order MUST always be time_sec asc
         ORDER BY ticker.dt
         LIMIT 0,500
@@ -58,13 +60,14 @@ def getDTTickerConfig():
     #   They will be initialized with a initial value. A var_* field updates them on each data row.
     config.VariableConfigLst = [
         # they come with: a name without @, a SQL to initialize them including VALUE, the initial VALUE
-        DimTabConfig.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
+        DimTabConfig.VariableConfig("var_iter" , "SET @var_iter = VALUE" , 0), # iterate over datetime, and...
+        DimTabConfig.VariableConfig("var_iter2", "SET @var_iter2 = VALUE", 0), #... in last second over id
     ]
 
     #regardless of what default values for Variables say, start at the last element written.
     # This is good for getting new data, but bad if we missed a jumpback - we ignore that for now.
     # TODO: use two different iterators in worker, one for jumpbacks and default value, one for current data.
-    config.StartAtEnd = True;
+    config.StartAtEnd = False;
 
     #PostProcessorDict: Dict with field name and post-processing function.
     # this is a dict with dimension table fields as key, and a function as value.

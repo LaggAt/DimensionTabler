@@ -23,20 +23,23 @@ def getDTTickerConfig():
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) AS time_sec,
             currency as group_currency,
             CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) as var_iter,
+            ticker.id as var_iter2,
             price as fx_first_price_open, 
             price as fx_last_price_close, 
             price as fx_min_price_low, 
             price as fx_max_price_high,
             price as fx_avg_price_average
         FROM ticker
-        WHERE CAST(UNIX_TIMESTAMP(ticker.dt) AS SIGNED) > @var_iter
+        WHERE ticker.dt > FROM_UNIXTIME(@var_iter)
+        OR (ticker.dt = FROM_UNIXTIME(@var_iter) AND ticker.id > @var_iter2)
         -- order MUST always be time_sec asc
         ORDER BY ticker.dt
         LIMIT 0,500
     """
     # variables for main sql
     config.VariableConfigLst = [
-        DimTabConfig.VariableConfig("var_iter", "SET @var_iter = VALUE", 0),
+        DimTabConfig.VariableConfig("var_iter" , "SET @var_iter = VALUE" , 0), # iterate over datetime, and...
+        DimTabConfig.VariableConfig("var_iter2", "SET @var_iter2 = VALUE", 0), #... in last second over id
     ]
     # some post processing (rounding to 8 decimal places here)
     config.PostProcessorDict = {
